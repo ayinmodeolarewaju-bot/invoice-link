@@ -1,0 +1,1 @@
+export default function NotFound() { return <div className="grid min-h-screen place-items-center text-center"><div><h1 className="text-2xl font-bold">Invoice not found</h1><a href="/" className="mt-3 inline-block text-violet">Create an invoice →</a></div></div>; }

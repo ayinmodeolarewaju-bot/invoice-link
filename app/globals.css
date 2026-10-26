@@ -1,0 +1,9 @@
+@tailwind base;@tailwind components;@tailwind utilities;
+body{background:#F7F5F0;color:#0B0D12;-webkit-font-smoothing:antialiased;font-feature-settings:"tnum" 1}
+.lbl{@apply text-[11px] font-semibold uppercase tracking-[.08em] text-ink/55}
+.field{@apply w-full rounded-field border border-ink/10 bg-white px-3.5 py-[11px] text-sm outline-none transition focus:border-violet focus:ring-4 focus:ring-violet/15}
+.card{@apply rounded-card border border-ink/[.08] bg-white shadow-card}
+.pill{@apply inline-flex whitespace-nowrap items-center gap-1.5 rounded-full border border-ink/[.08] bg-white px-3 py-1.5 text-xs font-semibold}
+.btn{@apply flex h-[52px] w-full items-center justify-center gap-2 rounded-[14px] bg-ink font-semibold text-[15px] text-white transition active:scale-[.98] disabled:opacity-50}
+.btn-v{@apply bg-violet shadow-violet hover:brightness-110}
+.ex{@apply rounded-md bg-signal px-2.5 py-1 text-[11px] font-bold uppercase tracking-[.08em] text-ink}
