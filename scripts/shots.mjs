@@ -1,0 +1,31 @@
+// Walks the full MOCK flow and saves screenshots to ./shots (uses system Chrome via playwright-core)
+import { chromium } from "playwright-core";
+const BASE = process.env.BASE ?? "http://localhost:3000";
+const browser = await chromium.launch({ executablePath: process.env.CHROME ?? "/usr/bin/google-chrome", args: ["--no-sandbox"] });
+const desk = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
+const page = await desk.newPage();
+const errors = []; page.on("pageerror", (e) => errors.push(String(e)));
+const shot = async (p, n) => { await p.waitForTimeout(900); await p.screenshot({ path: `shots/${n}.png` }); console.log("saved", n); };
+
+await page.goto(BASE); await page.getByText("Connect NEAR wallet").waitFor({ timeout: 30000 });
+await shot(page, "01-builder");
+await page.getByText("Connect NEAR wallet").click(); await shot(page, "01b-wallet-selector"); await page.keyboard.press("Escape");
+await page.mouse.click(5, 880); await page.waitForTimeout(400);
+await page.getByText("Create pay link →").click(); await page.getByTestId("paylink").waitFor();
+await shot(page, "02-link-created");
+const url = await page.getByTestId("paylink").textContent(); const id = url.split("/pay/")[1];
+await page.goto(`${BASE}/pay/${id}`); await shot(page, "03-pay-desktop");
+const mob = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+const m = await mob.newPage(); await m.goto(`${BASE}/pay/${id}`); await shot(m, "03b-pay-mobile");
+await page.getByRole("button", { name: /^Pay / }).click(); await page.getByText("You send").waitFor();
+await page.getByText("~ 45 sec").first().waitFor(); await shot(page, "04-quote");
+const ov = await page.evaluate(() => document.documentElement.scrollHeight - innerHeight); console.log("quote overflow px:", ov);
+await page.getByRole("button", { name: "Get deposit address" }).click(); await page.getByText("Send exactly").waitFor(); await shot(page, "05-deposit");
+await page.getByRole("button", { name: /Simulate deposit/ }).click(); await page.getByText("Payment in progress").waitFor();
+await page.waitForTimeout(3500); await shot(page, "06-status-processing");
+await page.waitForURL(/\/receipt\//, { timeout: 30000 }); await shot(page, "07-receipt-desktop");
+await m.goto(`${BASE}/receipt/${id}`); await shot(m, "07b-receipt-mobile");
+const res = await page.request.get(`${BASE}/api/receipt/${id}/pdf`); const fs = await import("node:fs");
+fs.writeFileSync("shots/08-receipt.pdf", await res.body()); console.log("pdf", res.status(), res.headers()["content-type"]);
+console.log("invoice", id, "errors:", errors.length ? errors : "none");
+await browser.close();
