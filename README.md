@@ -4,6 +4,14 @@
 
 Track: Real-World Money (`realworld`). Built during the NEAR HACKATHON (Nov 1–14, 2026).
 
+## Hackathon log
+
+The prototype was started on Oct 26, 2026, before the build window opened. Everything listed below was built inside the NEAR HACKATHON window (Nov 1–14, 2026), one small commit per task.
+
+| Date (UTC) | What changed |
+|---|---|
+| Nov 1 | Build window opened. Repo made public with the pre-window prototype history (invoice builder, pay flow, live status, receipt UI, demo scripts). Started this log. |
+
 ## Problem
 Freelancers chase cross-border payments: wires are slow, and crypto clients hold the "wrong" token on the "wrong" chain. Invoice Link lets the client pay with what they have; the freelancer receives exactly the invoiced amount in USDC.
 
