@@ -33,7 +33,7 @@ Freelancers chase cross-border payments: wires are slow, and crypto clients hold
   - `POST /v0/deposit/submit` reports the deposit tx hash.
   - `GET /v0/status` tracks the payment.
 - **NEAR Wallet Selector** (`@near-wallet-selector/core` and `modal-ui`, MyNearWallet, Meteor) for the freelancer's NEAR account.
-- **NEAR accounts** are the payout identity (e.g. `brookstudio.near`).
+- **NEAR accounts** are the payout identity. The demo payout account is `purefile1686.near` (live on mainnet).
 - **Quote signature verification**: each live quote's Ed25519 `signature` is checked with `verifyQuoteSignature()` from `@defuse-protocol/one-click-sdk-typescript`, and the quote is refused if the check fails. The signature is stored and shown on the receipt.
 - **NEP-141 stablecoins**: payout is USDC settled through the Intents network.
 
@@ -50,6 +50,7 @@ npm run shots      # Playwright walk-through → shots/ + shots/08-receipt.pdf (
 |---|---|---|
 | `MOCK_1CLICK` | `1` | `1` simulates quotes, deposits and status; `0` calls the live 1-Click API |
 | `ONECLICK_JWT` | empty | Optional partner key from partners.near-intents.org (without it, 1-Click adds a 0.25% fee) |
+| `NEXT_PUBLIC_DEFAULT_PAYOUT` | `purefile1686.near` | Payout account prefilled in the builder (must exist on mainnet for live quotes) |
 | `NEXT_PUBLIC_NEAR_NETWORK` | `testnet` | Network the wallet selector uses (use `mainnet` for a live payout account) |
 | `CHROME_PATH` | `/usr/bin/google-chrome` | Chrome/Chromium used for the PDF receipt |
 

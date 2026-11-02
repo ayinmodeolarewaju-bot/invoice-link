@@ -16,7 +16,7 @@ const spring = { type: "spring" as const, stiffness: 300, damping: 30 };
 
 export default function Builder() {
   const { accountId } = useWallet();
-  const [f, setF] = useState({ ...EXAMPLE, currency: "USDC" as "USDC" | "USDT", payoutAccount: "brookstudio.near", payoutChain: "near" });
+  const [f, setF] = useState({ ...EXAMPLE, currency: "USDC" as "USDC" | "USDT", payoutAccount: process.env.NEXT_PUBLIC_DEFAULT_PAYOUT || "purefile1686.near", payoutChain: "near" });
   const [created, setCreated] = useState<{ id: string; number: string } | null>(null);
   const [busy, setBusy] = useState(false); const [err, setErr] = useState(""); const [copied, setCopied] = useState(false);
   useEffect(() => { if (accountId) setF((s) => ({ ...s, payoutAccount: accountId })); }, [accountId]);
