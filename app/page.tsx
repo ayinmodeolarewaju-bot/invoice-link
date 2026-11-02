@@ -20,6 +20,17 @@ export default function Builder() {
   const [created, setCreated] = useState<{ id: string; number: string } | null>(null);
   const [busy, setBusy] = useState(false); const [err, setErr] = useState(""); const [copied, setCopied] = useState(false);
   useEffect(() => { if (accountId) setF((s) => ({ ...s, payoutAccount: accountId })); }, [accountId]);
+  const [acct, setAcct] = useState<{ id: string; exists: boolean | null; error?: string } | null>(null);
+  useEffect(() => {
+    if (f.payoutChain !== "near" || !f.payoutAccount.trim()) { setAcct(null); return; }
+    const id = f.payoutAccount.trim(); let off = false;
+    const t = setTimeout(async () => {
+      try { const j = await (await fetch(`/api/near/account?id=${encodeURIComponent(id)}`)).json(); if (!off) setAcct({ id, exists: j.exists, error: j.error }); }
+      catch { if (!off) setAcct(null); }
+    }, 400);
+    return () => { off = true; clearTimeout(t); };
+  }, [f.payoutAccount, f.payoutChain]);
+  const payoutMissing = acct?.id === f.payoutAccount.trim() && acct.exists === false;
   const now = useMemo(() => new Date().toISOString(), []);
   const due = useMemo(() => new Date(Date.now() + 14 * 864e5).toISOString(), []);
   const set = (k: string, v: unknown) => setF((s) => ({ ...s, [k]: v }));
@@ -71,14 +82,15 @@ export default function Builder() {
             </div>
           </div>
           <L t="Payout to">
-            <div className="relative"><input className="field pr-32 font-mono" value={f.payoutAccount} onChange={(e) => set("payoutAccount", e.target.value)} />
-              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-mint">{accountId && f.payoutAccount === accountId ? "✓ Connected" : /\.near$|\.testnet$/.test(f.payoutAccount) ? "✓ NEAR account" : ""}</span></div>
+            <div className="relative"><input className={`field pr-32 font-mono ${payoutMissing ? "border-err ring-4 ring-err/10" : ""}`} aria-invalid={payoutMissing} value={f.payoutAccount} onChange={(e) => set("payoutAccount", e.target.value)} />
+              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-mint">{payoutMissing ? "" : accountId && f.payoutAccount === accountId ? "✓ Connected" : acct?.exists && acct.id === f.payoutAccount.trim() ? "✓ Found on mainnet" : ""}</span></div>
+            {payoutMissing && <p role="alert" className="mt-1.5 text-xs font-semibold text-err">{acct?.error?.startsWith("Account") ? "Account not found on mainnet. Check the spelling, or create it first." : acct?.error}</p>}
           </L>
           <div className="flex-1" />
           {err && <p className="text-sm text-err">{err}</p>}
           <AnimatePresence mode="wait">
             {!created ? (
-              <motion.button key="b" layoutId="cta" onClick={create} disabled={busy} className="btn btn-v" transition={spring}>{busy ? "Creating…" : "Create pay link →"}</motion.button>
+              <motion.button key="b" layoutId="cta" onClick={create} disabled={busy || payoutMissing} className="btn btn-v" transition={spring}>{busy ? "Creating…" : "Create pay link →"}</motion.button>
             ) : (
               <motion.div key="l" layoutId="cta" transition={spring} className="rounded-[14px] bg-ink p-4 text-white">
                 <div className="flex items-center justify-between"><span className="text-xs font-semibold text-mint">● Pay link ready · {created.number}</span><button onClick={() => setCreated(null)} className="text-xs text-white/50">New</button></div>

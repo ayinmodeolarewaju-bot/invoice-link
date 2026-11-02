@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getInvoice, newId, savePayment } from "@/lib/db";
 import { findToken, isMock, liveQuote, mockQuote } from "@/lib/oneclick";
 import { total, type Payment } from "@/lib/types";
+import { checkNearAccount } from "@/lib/validate";
 import { verifyQuoteSignature } from "@defuse-protocol/one-click-sdk-typescript";
 export const runtime = "nodejs";
 // POST { invoiceId, symbol, chain, refundTo, dry }  ->  1-Click /v0/quote with swapType EXACT_OUTPUT
@@ -20,6 +21,11 @@ export async function POST(req: Request) {
     if (mock) { q = mockQuote(amountOut, origin.symbol, origin.price, origin.decimals); proof = { signature: "ed25519:SIMULATED-" + q.depositAddress.slice(2, 26), timestamp: new Date().toISOString(), correlationId: null, verified: null, simulated: true }; }
     else {
       if (!refundTo) return NextResponse.json({ error: "refundTo (your address on the origin chain) is required for a live quote" }, { status: 400 });
+      if (inv.payoutChain === "near") {
+        // Check the payout account exists before quoting, so the client sees a clear error instead of a raw 1-Click failure
+        const acct = await checkNearAccount(inv.payoutAccount, "mainnet").catch(() => null);
+        if (acct && !acct.exists) return NextResponse.json({ error: `${acct.error} Ask the freelancer to fix the payout account on this invoice.`, code: "PAYOUT_NOT_FOUND" }, { status: 400 });
+      }
       const r = await liveQuote({ dry: !!dry, originAsset: origin.assetId, destinationAsset: dest.assetId,
         amountOut: BigInt(Math.round(amountOut * 100)).toString() + "0".repeat(Math.max(0, dest.decimals - 2)), recipient: inv.payoutAccount, refundTo });
       // Verify the 1-Click Ed25519 quote signature (docs: /1click-api/verify-quote-signature) before using depositAddress
