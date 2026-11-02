@@ -11,6 +11,7 @@ The prototype was started on Oct 26, 2026, before the build window opened. Every
 | Date (UTC) | What changed |
 |---|---|
 | Nov 1 | Build window opened. Repo made public with the pre-window prototype history (invoice builder, pay flow, live status, receipt UI, demo scripts). Started this log. |
+| Nov 2 | Default payout set to `purefile1686.near`. Payout account checked on NEAR mainnet (`view_account`) before quoting, with an inline "account not found on mainnet" message in the builder. Refund address validated per chain with a clear message. First Vitest unit tests (`npm test`). |
 
 ## Problem
 Freelancers chase cross-border payments: wires are slow, and crypto clients hold the "wrong" token on the "wrong" chain. Invoice Link lets the client pay with what they have; the freelancer receives exactly the invoiced amount in USDC.
@@ -82,6 +83,7 @@ Live quotes use **mainnet** assets. Only do this with money you are fine losing 
 - Real mode has been tested only up to verified **dry** quotes (no funds sent yet).
 - The receipt has no on-chain anchor of its own: it links to the deposit tx and the Intents explorer.
 - The PDF route needs a Chrome/Chromium binary on the server. Serverless hosts need `@sparticuz/chromium` or similar.
+- Refund-address checks are format-only (no checksum or on-chain lookup); 1-Click still has the final say.
 - The wallet selector connects the freelancer's account, but the payout field is not yet locked to the signed-in account.
 - Storage is local SQLite (`data/invoicelink.db`). There are no user accounts.
 
