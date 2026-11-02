@@ -10,6 +10,7 @@ import { StatusRail } from "./StatusRail";
 import { TokenIcon } from "./TokenIcon";
 import { TopBar } from "./TopBar";
 import { dispSym, chainName, money, short } from "./fmt";
+import { refundAddressError } from "@/lib/validate";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const step = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -12 }, transition: { duration: 0.4, ease: EASE } };
@@ -17,7 +18,7 @@ type Step = "review" | "pick" | "send" | "status";
 type Quote = { amountInFormatted: string; amountOutFormatted: string; timeEstimate?: number; deadline?: string; mock: boolean; error?: string };
 const SYMBOLS = ["USDT", "USDC", "ETH"];
 const CHAIN_ORDER = ["arb", "eth", "base", "sol", "near", "pol", "bsc", "op", "avax", "ton", "tron", "gnosis"];
-const EXAMPLE_REFUND: Record<string, string> = { sol: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU", near: "client-example.near", ton: "UQ-example", tron: "T-example" };
+const EXAMPLE_REFUND: Record<string, string> = { sol: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU", near: "client-example.near", ton: "UQBvW8Z5huBkMJYdnfAEM5JqTNkuWX3diqYENkWsIL0XggGG", tron: "TLa2f6VPqDgRE67v1736s7bJ8Ray5wYjU7" };
 
 export function PayFlow({ invoice, initialPayment, mock }: { invoice: Invoice; initialPayment: Payment | null; mock: boolean }) {
   const router = useRouter();
@@ -86,9 +87,11 @@ function Pick({ invoice, onQuote, onBack, mock }: { invoice: Invoice; onQuote: (
   useEffect(() => { if (chains.length && !chains.includes(chain)) setChain(chains[0]); }, [chains, chain]);
   const isEvm = !["sol", "near", "ton", "tron", "btc"].includes(chain);
   const refundTo = refund || (mock ? (EXAMPLE_REFUND[chain] ?? "0xA11cE0000000000000000000000000000000b0b0") : "");
+  const refundErr = refund.trim() ? refundAddressError(chain, refund, chainName(chain)) : null;
   const body = (dry: boolean) => JSON.stringify({ invoiceId: invoice.id, symbol: sym, chain, refundTo, dry });
   useEffect(() => {
     if (!chains.includes(chain)) return;
+    if (refundErr) { setQ(null); setErr(""); return; }
     let off = false; setLoading(true); setErr("");
     const t = setTimeout(async () => {
       const r = await fetch("/api/oneclick/quote", { method: "POST", headers: { "content-type": "application/json" }, body: body(true) });
@@ -114,7 +117,8 @@ function Pick({ invoice, onQuote, onBack, mock }: { invoice: Invoice; onQuote: (
       <div className="lbl mb-2 mt-3.5 flex justify-between"><span>Network</span><span className="normal-case tracking-normal">{live ? "live list from 1-Click /v0/tokens" : "offline token list"}</span></div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{chains.map((c) => <Chip key={c} on={c === chain} onClick={() => setChain(c)}><TokenIcon k={c} />{chainName(c)}</Chip>)}</div>
       <label className="mt-3.5 block"><div className="lbl mb-1.5">Refund address on {chainName(chain)} {!refund && (mock ? <span className="normal-case tracking-normal text-signal">· example prefilled</span> : <span className="normal-case tracking-normal text-err">· required for a live quote</span>)}</div>
-        <input className="field font-mono text-xs" placeholder={refundTo || "Your address on this chain"} value={refund} onChange={(e) => setRefund(e.target.value)} /></label>
+        <input className={`field font-mono text-xs ${refundErr ? "border-err ring-4 ring-err/10" : ""}`} aria-invalid={!!refundErr} aria-describedby="refund-err" placeholder={refundTo || "Your address on this chain"} value={refund} onChange={(e) => setRefund(e.target.value)} />
+        {refundErr && <p id="refund-err" role="alert" className="mt-1.5 text-xs font-semibold text-err">{refundErr}</p>}</label>
       <motion.div layout className="mt-4 rounded-[14px] bg-ink px-[22px] py-[18px] text-white">
         <div className="flex items-center justify-between"><span className="lbl text-white/50">You send</span><span className="text-xs text-mint">● {mock ? "Simulated" : "Live"} 1-Click quote · refreshes in 0:{String(tick).padStart(2, "0")}</span></div>
         <div className="mb-3 mt-1 font-mono text-[32px] font-semibold tracking-[-.02em]">
@@ -128,7 +132,7 @@ function Pick({ invoice, onQuote, onBack, mock }: { invoice: Invoice; onQuote: (
         </div>
       </motion.div>
       {err && <p className="mt-3 text-sm text-err">{err}</p>}
-      <button className="btn btn-v mt-4" disabled={!q || busy || !refundTo} onClick={go}>{busy ? "Requesting deposit address…" : "Get deposit address"}</button>
+      <button className="btn btn-v mt-4" disabled={!q || busy || !refundTo || !!refundErr} onClick={go}>{busy ? "Requesting deposit address…" : "Get deposit address"}</button>
       <p className="mt-2.5 text-center text-xs text-ink/55">If the swap can&apos;t complete, funds are refunded to your {chainName(chain)} address.</p>
     </div>
   );

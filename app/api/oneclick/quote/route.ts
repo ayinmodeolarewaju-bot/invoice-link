@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getInvoice, newId, savePayment } from "@/lib/db";
 import { findToken, isMock, liveQuote, mockQuote } from "@/lib/oneclick";
 import { total, type Payment } from "@/lib/types";
-import { checkNearAccount } from "@/lib/validate";
+import { CHAINS } from "@/components/fmt";
+import { checkNearAccount, refundAddressError } from "@/lib/validate";
 import { verifyQuoteSignature } from "@defuse-protocol/one-click-sdk-typescript";
 export const runtime = "nodejs";
 // POST { invoiceId, symbol, chain, refundTo, dry }  ->  1-Click /v0/quote with swapType EXACT_OUTPUT
@@ -14,6 +15,10 @@ export async function POST(req: Request) {
   const origin = await findToken(symbol, chain);
   const dest = await findToken(inv.currency, inv.payoutChain);
   if (!origin || !dest) return NextResponse.json({ error: `unsupported asset ${symbol} on ${chain}` }, { status: 400 });
+  if (refundTo || !isMock()) {
+    const bad = refundAddressError(origin.blockchain, String(refundTo ?? ""), CHAINS[origin.blockchain] ?? origin.blockchain);
+    if (bad) return NextResponse.json({ error: bad, code: "REFUND_INVALID" }, { status: 400 });
+  }
   const amountOut = total(inv);
   const mock = isMock();
   let q; let proof: Payment["proof"];
