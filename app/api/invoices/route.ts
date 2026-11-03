@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
-import { newId, saveInvoice, countInvoices } from "@/lib/db";
+import { newId, saveInvoice, countInvoices, listInvoices } from "@/lib/db";
+import { invoicesForOwner } from "@/lib/owner";
 import type { Invoice } from "@/lib/types";
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+// GET /api/invoices?owner=<near account> → summaries of that account's invoices (newest first).
+export async function GET(req: Request) {
+  const owner = new URL(req.url).searchParams.get("owner");
+  return NextResponse.json({ invoices: invoicesForOwner(listInvoices(), owner) });
+}
 export async function POST(req: Request) {
   const b = await req.json();
   const items = (b.items ?? []).filter((x: { description: string; amount: number }) => x.description && Number(x.amount) > 0)

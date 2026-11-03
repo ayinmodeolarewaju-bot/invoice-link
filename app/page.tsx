@@ -2,6 +2,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { InvoiceCard } from "@/components/InvoiceCard";
+import { MyInvoices } from "@/components/MyInvoices";
 import { TokenIcon } from "@/components/TokenIcon";
 import { TopBar } from "@/components/TopBar";
 import { useWallet, WalletButton } from "@/components/Wallet";
@@ -107,6 +108,7 @@ export default function Builder() {
               </motion.div>
             )}
           </AnimatePresence>
+          <MyInvoices accountId={accountId} refreshKey={created?.id} />
         </section>
         <section className="relative hidden place-items-center p-10 lg:grid" style={{ background: "radial-gradient(1200px 600px at 70% 20%,rgba(110,91,255,.10),transparent)" }}>
           <div className="lbl absolute left-10 top-7">Live preview</div>

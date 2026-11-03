@@ -31,6 +31,9 @@ export function getInvoice(id: string): Invoice | null {
   const r = db.prepare("select data from invoices where id=?").get(id) as { data: string } | undefined;
   return r ? JSON.parse(r.data) : null;
 }
+export function listInvoices(limit = 500): Invoice[] {
+  return (db.prepare("select data from invoices order by created_at desc limit ?").all(limit) as { data: string }[]).map((r) => JSON.parse(r.data));
+}
 export function countInvoices() { return (db.prepare("select count(*) c from invoices").get() as { c: number }).c; }
 export function savePayment(p: Payment) {
   db.prepare("insert or replace into payments (id,invoice_id,data,created_at) values (?,?,?,?)").run(p.id, p.invoiceId, JSON.stringify(p), p.createdAt);
