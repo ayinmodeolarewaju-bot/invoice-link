@@ -7,6 +7,9 @@ import { TopBar } from "@/components/TopBar";
 import { useWallet, WalletButton } from "@/components/Wallet";
 import { chainName } from "@/components/fmt";
 import type { LineItem } from "@/lib/types";
+import { isFromWallet, onManualEdit, onWalletChange, walletPayout, type PayoutSource } from "@/lib/payout";
+
+const DEFAULT_PAYOUT = process.env.NEXT_PUBLIC_DEFAULT_PAYOUT || "purefile1686.near";
 
 const EXAMPLE = {
   fromName: "Brook Studio", fromTagline: "Motion design · Lagos, NG", clientName: "Northwind Labs GmbH", clientEmail: "ap@northwind.example", clientLocation: "Berlin, DE",
@@ -16,10 +19,11 @@ const spring = { type: "spring" as const, stiffness: 300, damping: 30 };
 
 export default function Builder() {
   const { accountId } = useWallet();
-  const [f, setF] = useState({ ...EXAMPLE, currency: "USDC" as "USDC" | "USDT", payoutAccount: process.env.NEXT_PUBLIC_DEFAULT_PAYOUT || "purefile1686.near", payoutChain: "near" });
+  const [f, setF] = useState({ ...EXAMPLE, currency: "USDC" as "USDC" | "USDT", payoutAccount: DEFAULT_PAYOUT, payoutSource: "default" as PayoutSource, payoutChain: "near" });
   const [created, setCreated] = useState<{ id: string; number: string } | null>(null);
   const [busy, setBusy] = useState(false); const [err, setErr] = useState(""); const [copied, setCopied] = useState(false);
-  useEffect(() => { if (accountId) setF((s) => ({ ...s, payoutAccount: accountId })); }, [accountId]);
+  useEffect(() => { setF((s) => ({ ...s, ...onWalletChange(s, accountId, s.payoutChain, DEFAULT_PAYOUT) })); }, [accountId, f.payoutChain]);
+  const fromWallet = isFromWallet(f, accountId);
   const [acct, setAcct] = useState<{ id: string; exists: boolean | null; error?: string } | null>(null);
   useEffect(() => {
     if (f.payoutChain !== "near" || !f.payoutAccount.trim()) { setAcct(null); return; }
@@ -40,7 +44,7 @@ export default function Builder() {
 
   async function create() {
     setBusy(true); setErr("");
-    const r = await fetch("/api/invoices", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...f, ownerAccount: accountId, isExample }) });
+    const r = await fetch("/api/invoices", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...f, payoutSource: undefined, ownerAccount: accountId, isExample }) });
     const j = await r.json(); setBusy(false);
     if (!r.ok) return setErr(j.error); setCreated(j);
   }
@@ -82,8 +86,9 @@ export default function Builder() {
             </div>
           </div>
           <L t="Payout to">
-            <div className="relative"><input className={`field pr-32 font-mono ${payoutMissing ? "border-err ring-4 ring-err/10" : ""}`} aria-invalid={payoutMissing} value={f.payoutAccount} onChange={(e) => set("payoutAccount", e.target.value)} />
-              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-mint">{payoutMissing ? "" : accountId && f.payoutAccount === accountId ? "✓ Connected" : acct?.exists && acct.id === f.payoutAccount.trim() ? "✓ Found on mainnet" : ""}</span></div>
+            <div className="relative"><input className={`field pr-32 font-mono ${payoutMissing ? "border-err ring-4 ring-err/10" : ""}`} aria-invalid={payoutMissing} aria-describedby="payout-src" value={f.payoutAccount} onChange={(e) => setF((s) => ({ ...s, ...onManualEdit(e.target.value, accountId) }))} />
+              <span id="payout-src" className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-mint">{payoutMissing ? "" : fromWallet ? <span data-testid="from-wallet" className="rounded-full bg-mint/15 px-2 py-0.5">From wallet</span> : acct?.exists && acct.id === f.payoutAccount.trim() ? "✓ Found on mainnet" : ""}</span></div>
+            {accountId && f.payoutChain === "near" && !fromWallet && <button type="button" onClick={() => setF((s) => ({ ...s, ...walletPayout(accountId) }))} className="mt-1.5 text-xs font-semibold text-violet">Use connected wallet ({accountId})</button>}
             {payoutMissing && <p role="alert" className="mt-1.5 text-xs font-semibold text-err">{acct?.error?.startsWith("Account") ? "Account not found on mainnet. Check the spelling, or create it first." : acct?.error}</p>}
           </L>
           <div className="flex-1" />
