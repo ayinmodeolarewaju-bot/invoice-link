@@ -13,6 +13,7 @@ The prototype was started on Oct 26, 2026, before the build window opened. Every
 | Nov 1 | Build window opened. Repo made public with the pre-window prototype history (invoice builder, pay flow, live status, receipt UI, demo scripts). Started this log. |
 | Nov 2 | Default payout set to `purefile1686.near`. Payout account checked on NEAR mainnet (`view_account`) before quoting, with an inline "account not found on mainnet" message in the builder. Refund address validated per chain with a clear message. First Vitest unit tests (`npm test`). |
 | Nov 3 | Payout autofills from the connected NEAR wallet: still editable, shows a "From wallet" badge, never overwrites a value you typed, and goes back to the default on sign-out. New "My invoices" list under the builder shows only the connected account's invoices (open or paid), via `GET /api/invoices?owner=`. More unit tests. |
+| Nov 4 | Test suite: Vitest covers the payment status state machine, the invoice-to-quote amount mapping, USDT/USDT0 symbol handling and rejection of an unverified quote signature (30 tests, `npm test`). Playwright end-to-end test walks the full mock flow from builder to paid receipt (`npm run test:e2e`). Status and quote logic moved into small pure helpers (`lib/status.ts`, `lib/quote.ts`). |
 
 ## Problem
 Freelancers chase cross-border payments: wires are slow, and crypto clients hold the "wrong" token on the "wrong" chain. Invoice Link lets the client pay with what they have; the freelancer receives exactly the invoiced amount in USDC.
