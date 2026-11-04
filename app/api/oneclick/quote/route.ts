@@ -4,6 +4,7 @@ import { findToken, isMock, liveQuote, mockQuote } from "@/lib/oneclick";
 import { total, type Payment } from "@/lib/types";
 import { CHAINS } from "@/components/fmt";
 import { checkNearAccount, refundAddressError } from "@/lib/validate";
+import { toBaseUnits, verifyOrReject } from "@/lib/quote";
 import { verifyQuoteSignature } from "@defuse-protocol/one-click-sdk-typescript";
 export const runtime = "nodejs";
 // POST { invoiceId, symbol, chain, refundTo, dry }  ->  1-Click /v0/quote with swapType EXACT_OUTPUT
@@ -32,9 +33,9 @@ export async function POST(req: Request) {
         if (acct && !acct.exists) return NextResponse.json({ error: `${acct.error} Ask the freelancer to fix the payout account on this invoice.`, code: "PAYOUT_NOT_FOUND" }, { status: 400 });
       }
       const r = await liveQuote({ dry: !!dry, originAsset: origin.assetId, destinationAsset: dest.assetId,
-        amountOut: BigInt(Math.round(amountOut * 100)).toString() + "0".repeat(Math.max(0, dest.decimals - 2)), recipient: inv.payoutAccount, refundTo });
+        amountOut: toBaseUnits(amountOut, dest.decimals), recipient: inv.payoutAccount, refundTo });
       // Verify the 1-Click Ed25519 quote signature (docs: /1click-api/verify-quote-signature) before using depositAddress
-      let verified = false; try { verified = !!(await verifyQuoteSignature(r as never)); } catch { verified = false; }
+      const verified = await verifyOrReject(r, verifyQuoteSignature);
       if (!verified) return NextResponse.json({ error: "1-Click quote signature did not verify; refusing to use this quote" }, { status: 502 });
       proof = { signature: r.signature ?? "", timestamp: r.timestamp ?? null, correlationId: r.correlationId ?? null, verified, simulated: false };
       q = { ...r.quote, deadline: r.quote.deadline ?? new Date(Date.now() + 30 * 60_000).toISOString() };
