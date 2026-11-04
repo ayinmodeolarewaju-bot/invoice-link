@@ -7,3 +7,5 @@ data/*.db*
 *.log
 .DS_Store
 /demo-raw
+/test-results
+/playwright-report
