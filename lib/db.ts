@@ -5,13 +5,17 @@ function useRedis() {
   return Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 }
 
+/** Vercel Blob when BLOB_READ_WRITE_TOKEN is set (preferred serverless store without Upstash). */
+function useBlob() {
+  return !useRedis() && Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+}
+
 /**
- * TEMPORARY hackathon demo fallback: on Vercel without Upstash env, keep data in an
- * in-memory Map (per serverless instance; lost on cold start). Replace with
- * Marketplace Upstash Redis by setting UPSTASH_REDIS_REST_URL/TOKEN.
+ * Last-resort fallback: on Vercel without Upstash or Blob token, keep data in an
+ * in-memory Map (per serverless instance; lost on cold start / across instances).
  */
 function useMemory() {
-  return !useRedis() && Boolean(process.env.VERCEL);
+  return !useRedis() && !useBlob() && Boolean(process.env.VERCEL);
 }
 const gM = globalThis as unknown as { __ilMem?: { inv: Map<string, Invoice>; pay: Map<string, Payment> } };
 function mem() {
@@ -32,7 +36,7 @@ const g = globalThis as unknown as { __ilSqlite?: SqliteDb };
 
 function sqliteConn(): SqliteDb {
   if (g.__ilSqlite) return g.__ilSqlite;
-  // Lazy require so Next/Vercel never loads the native module when Redis is used.
+  // Lazy require so Next/Vercel never loads the native module when Redis/Blob is used.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const Database = require("better-sqlite3") as typeof import("better-sqlite3");
   const fs = require("node:fs") as typeof import("node:fs");
@@ -76,18 +80,87 @@ function scoreOf(iso: string) {
   return Number.isFinite(n) ? n : Date.now();
 }
 
-// --- Public API (async so Redis REST works; SQLite path awaits nothing heavy) -
+// --- Vercel Blob -------------------------------------------------------------
+type BlobIndexEntry = { id: string; createdAt: string };
+
+const BLOB_INV = (id: string) => `inv/${id}.json`;
+const BLOB_PAY = (id: string) => `pay/${id}.json`;
+const BLOB_INV_INDEX = "inv/index.json";
+const BLOB_PAY_INV = (invoiceId: string) => `pay/inv/${invoiceId}.json`;
+const BLOB_PAY_DEP = (addr: string) => `pay/dep/${encodeURIComponent(addr)}.json`;
+
+type BlobSdk = typeof import("@vercel/blob");
+const gB = globalThis as unknown as { __ilBlob?: BlobSdk };
+
+function blobSdk(): BlobSdk {
+  if (gB.__ilBlob) return gB.__ilBlob;
+  // Lazy require so `next build` / local SQLite path never needs the Blob SDK.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  gB.__ilBlob = require("@vercel/blob") as BlobSdk;
+  return gB.__ilBlob!;
+}
+
+async function blobGetJson<T>(pathname: string): Promise<T | null> {
+  const { get } = blobSdk();
+  const result = await get(pathname, { access: "private", useCache: false });
+  if (!result || result.statusCode !== 200 || !result.stream) return null;
+  const text = await new Response(result.stream).text();
+  if (!text) return null;
+  return JSON.parse(text) as T;
+}
+
+async function blobPutJson(pathname: string, data: unknown) {
+  const { put } = blobSdk();
+  await put(pathname, JSON.stringify(data), {
+    access: "private",
+    contentType: "application/json",
+    allowOverwrite: true,
+    addRandomSuffix: false,
+    cacheControlMaxAge: 60,
+  });
+}
+
+async function blobReadInvIndex(): Promise<BlobIndexEntry[]> {
+  return (await blobGetJson<BlobIndexEntry[]>(BLOB_INV_INDEX)) ?? [];
+}
+
+async function blobWriteInvIndex(entries: BlobIndexEntry[]) {
+  entries.sort((a, b) => scoreOf(b.createdAt) - scoreOf(a.createdAt));
+  await blobPutJson(BLOB_INV_INDEX, entries);
+}
+
+async function blobReadPayInvIndex(invoiceId: string): Promise<BlobIndexEntry[]> {
+  return (await blobGetJson<BlobIndexEntry[]>(BLOB_PAY_INV(invoiceId))) ?? [];
+}
+
+async function blobWritePayInvIndex(invoiceId: string, entries: BlobIndexEntry[]) {
+  entries.sort((a, b) => scoreOf(b.createdAt) - scoreOf(a.createdAt));
+  await blobPutJson(BLOB_PAY_INV(invoiceId), entries);
+}
+
+// --- Public API (async so Redis/Blob REST works; SQLite path awaits nothing heavy) -
 export const newId = (n = 10) => {
   const a = "abcdefghjkmnpqrstuvwxyz23456789";
   return Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => a[b % a.length]).join("");
 };
 
 export async function saveInvoice(inv: Invoice) {
-  if (useMemory()) { mem().inv.set(inv.id, inv); return; }
+  if (useMemory()) {
+    mem().inv.set(inv.id, inv);
+    return;
+  }
   if (useRedis()) {
     const r = redis();
     await r.set(INV_KEY(inv.id), inv);
     await r.zadd(INV_INDEX, { score: scoreOf(inv.createdAt), member: inv.id });
+    return;
+  }
+  if (useBlob()) {
+    await blobPutJson(BLOB_INV(inv.id), inv);
+    const index = await blobReadInvIndex();
+    const next = index.filter((e) => e.id !== inv.id);
+    next.push({ id: inv.id, createdAt: inv.createdAt });
+    await blobWriteInvIndex(next);
     return;
   }
   sqliteConn()
@@ -101,6 +174,9 @@ export async function getInvoice(id: string): Promise<Invoice | null> {
     const raw = await redis().get<Invoice | string>(INV_KEY(id));
     if (raw == null) return null;
     return typeof raw === "string" ? (JSON.parse(raw) as Invoice) : raw;
+  }
+  if (useBlob()) {
+    return blobGetJson<Invoice>(BLOB_INV(id));
   }
   const row = sqliteConn().prepare("select data from invoices where id=?").get(id) as { data: string } | undefined;
   return row ? (JSON.parse(row.data) as Invoice) : null;
@@ -121,6 +197,15 @@ export async function listInvoices(limit = 500): Promise<Invoice[]> {
     }
     return out;
   }
+  if (useBlob()) {
+    const index = (await blobReadInvIndex()).slice(0, limit);
+    const out: Invoice[] = [];
+    for (const e of index) {
+      const inv = await blobGetJson<Invoice>(BLOB_INV(e.id));
+      if (inv) out.push(inv);
+    }
+    return out;
+  }
   return (
     sqliteConn().prepare("select data from invoices order by created_at desc limit ?").all(limit) as { data: string }[]
   ).map((row) => JSON.parse(row.data) as Invoice);
@@ -132,16 +217,31 @@ export async function countInvoices(): Promise<number> {
     const n = await redis().zcard(INV_INDEX);
     return Number(n) || 0;
   }
+  if (useBlob()) {
+    return (await blobReadInvIndex()).length;
+  }
   return (sqliteConn().prepare("select count(*) c from invoices").get() as { c: number }).c;
 }
 
 export async function savePayment(p: Payment) {
-  if (useMemory()) { mem().pay.set(p.id, p); return; }
+  if (useMemory()) {
+    mem().pay.set(p.id, p);
+    return;
+  }
   if (useRedis()) {
     const r = redis();
     await r.set(PAY_KEY(p.id), p);
     await r.zadd(PAY_INV_INDEX(p.invoiceId), { score: scoreOf(p.createdAt), member: p.id });
     if (p.depositAddress) await r.set(PAY_DEP_KEY(p.depositAddress), p.id);
+    return;
+  }
+  if (useBlob()) {
+    await blobPutJson(BLOB_PAY(p.id), p);
+    const payIdx = await blobReadPayInvIndex(p.invoiceId);
+    const next = payIdx.filter((e) => e.id !== p.id);
+    next.push({ id: p.id, createdAt: p.createdAt });
+    await blobWritePayInvIndex(p.invoiceId, next);
+    if (p.depositAddress) await blobPutJson(BLOB_PAY_DEP(p.depositAddress), { id: p.id });
     return;
   }
   sqliteConn()
@@ -160,6 +260,11 @@ export async function getPaymentByDeposit(addr: string): Promise<Payment | null>
     if (raw == null) return null;
     return typeof raw === "string" ? (JSON.parse(raw) as Payment) : raw;
   }
+  if (useBlob()) {
+    const ref = await blobGetJson<{ id: string }>(BLOB_PAY_DEP(addr));
+    if (!ref?.id) return null;
+    return blobGetJson<Payment>(BLOB_PAY(ref.id));
+  }
   const rows = sqliteConn().prepare("select data from payments").all() as { data: string }[];
   for (const row of rows) {
     const p = JSON.parse(row.data) as Payment;
@@ -177,6 +282,11 @@ export async function latestPayment(invoiceId: string): Promise<Payment | null> 
     const raw = await r.get<Payment | string>(PAY_KEY(ids[0]!));
     if (raw == null) return null;
     return typeof raw === "string" ? (JSON.parse(raw) as Payment) : raw;
+  }
+  if (useBlob()) {
+    const ids = await blobReadPayInvIndex(invoiceId);
+    if (!ids.length) return null;
+    return blobGetJson<Payment>(BLOB_PAY(ids[0]!.id));
   }
   const row = sqliteConn()
     .prepare("select data from payments where invoice_id=? order by created_at desc limit 1")

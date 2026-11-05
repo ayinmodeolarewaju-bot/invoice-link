@@ -31,6 +31,7 @@
     "@near-wallet-selector/my-near-wallet": "^10.1.4",
     "@react-pdf/renderer": "^4.9.0",
     "@upstash/redis": "^1.41.0",
+    "@vercel/blob": "^2.8.2",
     "better-sqlite3": "^11.10.0",
     "framer-motion": "^14.6.0",
     "next": "^15.5.28",
