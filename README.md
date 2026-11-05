@@ -1,5 +1,7 @@
 # Invoice Link
 
+[![CI](https://github.com/ayinmodeolarewaju-bot/invoice-link/actions/workflows/ci.yml/badge.svg)](https://github.com/ayinmodeolarewaju-bot/invoice-link/actions/workflows/ci.yml)
+
 **Send a link. Get paid in stablecoins from any chain, settled through NEAR Intents.**
 
 Track: Real-World Money (`realworld`). Built during the NEAR HACKATHON (Nov 1–14, 2026).
