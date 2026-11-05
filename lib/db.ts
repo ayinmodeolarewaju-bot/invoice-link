@@ -5,6 +5,20 @@ function useRedis() {
   return Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 }
 
+/**
+ * TEMPORARY hackathon demo fallback: on Vercel without Upstash env, keep data in an
+ * in-memory Map (per serverless instance; lost on cold start). Replace with
+ * Marketplace Upstash Redis by setting UPSTASH_REDIS_REST_URL/TOKEN.
+ */
+function useMemory() {
+  return !useRedis() && Boolean(process.env.VERCEL);
+}
+const gM = globalThis as unknown as { __ilMem?: { inv: Map<string, Invoice>; pay: Map<string, Payment> } };
+function mem() {
+  return (gM.__ilMem ??= { inv: new Map(), pay: new Map() });
+}
+const byDateDesc = (a: { createdAt: string }, b: { createdAt: string }) => scoreOf(b.createdAt) - scoreOf(a.createdAt);
+
 // --- SQLite (local / dev) ----------------------------------------------------
 type SqliteDb = {
   prepare: (q: string) => {
@@ -69,6 +83,7 @@ export const newId = (n = 10) => {
 };
 
 export async function saveInvoice(inv: Invoice) {
+  if (useMemory()) { mem().inv.set(inv.id, inv); return; }
   if (useRedis()) {
     const r = redis();
     await r.set(INV_KEY(inv.id), inv);
@@ -81,6 +96,7 @@ export async function saveInvoice(inv: Invoice) {
 }
 
 export async function getInvoice(id: string): Promise<Invoice | null> {
+  if (useMemory()) return mem().inv.get(id) ?? null;
   if (useRedis()) {
     const raw = await redis().get<Invoice | string>(INV_KEY(id));
     if (raw == null) return null;
@@ -91,6 +107,7 @@ export async function getInvoice(id: string): Promise<Invoice | null> {
 }
 
 export async function listInvoices(limit = 500): Promise<Invoice[]> {
+  if (useMemory()) return [...mem().inv.values()].sort(byDateDesc).slice(0, limit);
   if (useRedis()) {
     const r = redis();
     const ids = (await r.zrange(INV_INDEX, 0, Math.max(0, limit - 1), { rev: true })) as string[];
@@ -110,6 +127,7 @@ export async function listInvoices(limit = 500): Promise<Invoice[]> {
 }
 
 export async function countInvoices(): Promise<number> {
+  if (useMemory()) return mem().inv.size;
   if (useRedis()) {
     const n = await redis().zcard(INV_INDEX);
     return Number(n) || 0;
@@ -118,6 +136,7 @@ export async function countInvoices(): Promise<number> {
 }
 
 export async function savePayment(p: Payment) {
+  if (useMemory()) { mem().pay.set(p.id, p); return; }
   if (useRedis()) {
     const r = redis();
     await r.set(PAY_KEY(p.id), p);
@@ -131,6 +150,7 @@ export async function savePayment(p: Payment) {
 }
 
 export async function getPaymentByDeposit(addr: string): Promise<Payment | null> {
+  if (useMemory()) return [...mem().pay.values()].find((p) => p.depositAddress === addr) ?? null;
   if (useRedis()) {
     const r = redis();
     const id = await r.get<string>(PAY_DEP_KEY(addr));
@@ -149,6 +169,7 @@ export async function getPaymentByDeposit(addr: string): Promise<Payment | null>
 }
 
 export async function latestPayment(invoiceId: string): Promise<Payment | null> {
+  if (useMemory()) return [...mem().pay.values()].filter((p) => p.invoiceId === invoiceId).sort(byDateDesc)[0] ?? null;
   if (useRedis()) {
     const r = redis();
     const ids = (await r.zrange(PAY_INV_INDEX(invoiceId), 0, 0, { rev: true })) as string[];
