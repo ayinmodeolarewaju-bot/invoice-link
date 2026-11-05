@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 // GET ?depositAddress=...  ->  1-Click /v0/status ; persists transitions and marks the invoice paid on SUCCESS
 export async function GET(req: Request) {
   const addr = new URL(req.url).searchParams.get("depositAddress") ?? "";
-  const p = getPaymentByDeposit(addr);
+  const p = await getPaymentByDeposit(addr);
   if (!p) return NextResponse.json({ error: "unknown deposit address" }, { status: 404 });
   if (!isFinal(p.status)) {
     let next = p.status;
@@ -18,8 +18,8 @@ export async function GET(req: Request) {
     const now = new Date().toISOString();
     const step = advance(p, next, now);
     if (step.changed) {
-      p.history = step.history; p.status = step.status; p.updatedAt = now; savePayment(p);
-      if (next === "SUCCESS") { const inv = getInvoice(p.invoiceId); if (inv) { inv.status = "paid"; saveInvoice(inv); } }
+      p.history = step.history; p.status = step.status; p.updatedAt = now; await savePayment(p);
+      if (next === "SUCCESS") { const inv = await getInvoice(p.invoiceId); if (inv) { inv.status = "paid"; await saveInvoice(inv); } }
     }
   }
   return NextResponse.json({ payment: p });

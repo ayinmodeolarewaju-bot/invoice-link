@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 // GET /api/invoices?owner=<near account> → summaries of that account's invoices (newest first).
 export async function GET(req: Request) {
   const owner = new URL(req.url).searchParams.get("owner");
-  return NextResponse.json({ invoices: invoicesForOwner(listInvoices(), owner) });
+  return NextResponse.json({ invoices: invoicesForOwner(await listInvoices(), owner) });
 }
 export async function POST(req: Request) {
   const b = await req.json();
@@ -16,12 +16,12 @@ export async function POST(req: Request) {
   if (!b.clientName || !items.length || !b.payoutAccount) return NextResponse.json({ error: "clientName, at least one item and payoutAccount are required" }, { status: 400 });
   const now = new Date();
   const inv: Invoice = {
-    id: newId(), number: `INV-${now.getUTCFullYear()}-${String(countInvoices() + 42).padStart(4, "0")}`,
+    id: newId(), number: `INV-${now.getUTCFullYear()}-${String((await countInvoices()) + 42).padStart(4, "0")}`,
     fromName: String(b.fromName || "Brook Studio"), fromTagline: String(b.fromTagline || ""), clientName: String(b.clientName), clientEmail: String(b.clientEmail || ""),
     clientLocation: String(b.clientLocation || ""), items, currency: b.currency === "USDT" ? "USDT" : "USDC", payoutAccount: String(b.payoutAccount).trim(),
     payoutChain: String(b.payoutChain || "near"), ownerAccount: b.ownerAccount ?? null, issuedAt: now.toISOString(),
     dueAt: new Date(now.getTime() + 14 * 864e5).toISOString(), status: "open", createdAt: now.toISOString(), isExample: !!b.isExample,
   };
-  saveInvoice(inv);
+  await saveInvoice(inv);
   return NextResponse.json(inv, { status: 201 });
 }

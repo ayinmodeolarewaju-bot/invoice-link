@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 // POST { invoiceId, symbol, chain, refundTo, dry }  ->  1-Click /v0/quote with swapType EXACT_OUTPUT
 export async function POST(req: Request) {
   const { invoiceId, symbol, chain, refundTo, dry } = await req.json();
-  const inv = getInvoice(invoiceId);
+  const inv = await getInvoice(invoiceId);
   if (!inv) return NextResponse.json({ error: "invoice not found" }, { status: 404 });
   if (inv.status === "paid") return NextResponse.json({ error: "invoice already paid" }, { status: 409 });
   const origin = await findToken(symbol, chain);
@@ -49,6 +49,6 @@ export async function POST(req: Request) {
     originAsset: origin.assetId, originSymbol: origin.symbol, originChain: origin.blockchain, amountIn: q.amountIn, amountInFormatted: q.amountInFormatted,
     amountOutFormatted: q.amountOutFormatted, deadline: q.deadline!, timeEstimate: q.timeEstimate, status: "PENDING_DEPOSIT", txHash: null, mock,
     history: [{ status: "PENDING_DEPOSIT", at: now }], proof, createdAt: now, updatedAt: now };
-  savePayment(p);
+  await savePayment(p);
   return NextResponse.json({ dry: false, ...base, payment: p });
 }
