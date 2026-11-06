@@ -17,6 +17,7 @@ The prototype was started on Oct 26, 2026, before the build window opened. Every
 | Nov 3 | Payout autofills from the connected NEAR wallet: still editable, shows a "From wallet" badge, never overwrites a value you typed, and goes back to the default on sign-out. New "My invoices" list under the builder shows only the connected account's invoices (open or paid), via `GET /api/invoices?owner=`. More unit tests. |
 | Nov 4 | Test suite: Vitest covers the payment status state machine, the invoice-to-quote amount mapping, USDT/USDT0 symbol handling and rejection of an unverified quote signature (30 tests, `npm test`). Playwright end-to-end test walks the full mock flow from builder to paid receipt (`npm run test:e2e`). Status and quote logic moved into small pure helpers (`lib/status.ts`, `lib/quote.ts`). |
 | Nov 5 | Receipt PDF no longer needs Chrome: `/api/receipt/[id]/pdf` renders with `@react-pdf/renderer` (serverless-safe), same layout and proof block. Playwright stays only for e2e/shots/demo scripts. |
+| Nov 6 | Live demo on Vercel: https://invoice-link-near-0cda.vercel.app (mock mode by default, so no funds move). Invoices persist on serverless through Upstash Redis or Vercel Blob (SQLite stays for local dev). Health-checked the deployed app: create invoice, read it back, open the pay page. |
 
 ## Problem
 Freelancers chase cross-border payments: wires are slow, and crypto clients hold the "wrong" token on the "wrong" chain. Invoice Link lets the client pay with what they have; the freelancer receives exactly the invoiced amount in USDC.
@@ -90,7 +91,7 @@ Live quotes use **mainnet** assets. Only do this with money you are fine losing 
 - Refund-address checks are format-only (no checksum or on-chain lookup); 1-Click still has the final say.
 - The payout field autofills from the connected wallet but stays editable (on purpose, so you can be paid to another account).
 - "My invoices" filters by the connected account id without a signed message, so it only returns summaries (no client email or line items).
-- Storage is local SQLite (`data/invoicelink.db`). There are no user accounts.
+- Storage is local SQLite (`data/invoicelink.db`) in dev, and Upstash Redis or Vercel Blob when deployed on Vercel. There are no user accounts.
 
 ## License
 MIT. See [LICENSE](LICENSE).
