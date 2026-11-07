@@ -18,6 +18,7 @@ The prototype was started on Oct 26, 2026, before the build window opened. Every
 | Nov 4 | Test suite: Vitest covers the payment status state machine, the invoice-to-quote amount mapping, USDT/USDT0 symbol handling and rejection of an unverified quote signature (30 tests, `npm test`). Playwright end-to-end test walks the full mock flow from builder to paid receipt (`npm run test:e2e`). Status and quote logic moved into small pure helpers (`lib/status.ts`, `lib/quote.ts`). |
 | Nov 5 | Receipt PDF no longer needs Chrome: `/api/receipt/[id]/pdf` renders with `@react-pdf/renderer` (serverless-safe), same layout and proof block. Playwright stays only for e2e/shots/demo scripts. |
 | Nov 6 | Live demo on Vercel: https://invoice-link-near-0cda.vercel.app (mock mode by default, so no funds move). Invoices persist on serverless through Upstash Redis or Vercel Blob (SQLite stays for local dev). Health-checked the deployed app: create invoice, read it back, open the pay page. |
+| Nov 7 | Real-mode dry run, no funds moved: live 1-Click dry quotes from 7 chain/token routes to `purefile1686.near`, every Ed25519 signature verified and a tampered copy rejected (`node scripts/live-quote-check.mjs`). Screenshots of live quotes in the pay UI (`scripts/live-quote-shots.mjs`). See "Live quote verified" below. |
 
 ## Problem
 Freelancers chase cross-border payments: wires are slow, and crypto clients hold the "wrong" token on the "wrong" chain. Invoice Link lets the client pay with what they have; the freelancer receives exactly the invoiced amount in USDC.
@@ -69,6 +70,30 @@ npm run shots      # Playwright walk-through → shots/ + shots/08-receipt.pdf (
 | Quote signature | placeholder `ed25519:SIMULATED-…`, labelled simulated | verified with the SDK; the quote is refused if invalid |
 | Explorer links | none (tx hash shown as simulated) | chain explorer (nearblocks, arbiscan, etherscan, solscan…) and explorer.near-intents.org |
 | Status | a timeline: 0s known tx, 3s processing, 8s success | live `/v0/status` polling |
+
+## Live quote verified (real 1-Click API, no funds)
+
+On Nov 7, 2026 (09:09 UTC) we asked the live 1-Click API (`https://1click.chaindefuser.com`) for **dry** `EXACT_OUTPUT` quotes that pay exactly 25.00 USDC on NEAR to `purefile1686.near`. Dry quotes return no deposit address, so nothing could be sent. Each quote's Ed25519 signature was checked with `verifyQuoteSignature()`, and as a control the same quote with `amountIn` changed by one base unit had to fail the check.
+
+| Pay with | Payer sends | Est. time | Signature verified | Tampered copy rejected |
+|---|---|---|---|---|
+| USDC on Arbitrum | 25.262017 USDC | 25 s | ✓ | ✓ |
+| USDT on Arbitrum | 25.288313 USDT0 | 25 s | ✓ | ✓ |
+| USDC on Ethereum | 25.26091 USDC | 45 s | ✓ | ✓ |
+| ETH on Ethereum | 0.011271141864853578 ETH | 45 s | ✓ | ✓ |
+| USDC on Base | 25.262017 USDC | 35 s | ✓ | ✓ |
+| USDC on Solana | 25.261883 USDC | 20 s | ✓ | ✓ |
+| USDT on NEAR | 25.288312 USDT | 20 s | ✓ | ✓ |
+
+The difference above 25.00 is the route fee, slippage headroom and the 0.25% fee 1-Click adds when no partner key is set. Full output with signatures, timestamps and correlation ids: [`docs/live-quote-check.json`](docs/live-quote-check.json). Re-run it with `node scripts/live-quote-check.mjs`. The refund addresses in the script are well-known public addresses used only to satisfy the API's format check (it rejects zero/burn addresses); a dry quote never creates a deposit, so no refund can happen.
+
+The same live quotes in the real pay page (app run with `MOCK_1CLICK=0`, 450.00 USDC invoice, only dry quotes requested):
+
+| USDT on Arbitrum | ETH on Ethereum | USDC on Solana |
+|---|---|---|
+| ![Live quote, USDT on Arbitrum](shots/09-live-quote-usdt-arb.png) | ![Live quote, ETH on Ethereum](shots/10-live-quote-eth-eth.png) | ![Live quote, USDC on Solana](shots/11-live-quote-usdc-sol.png) |
+
+The $1 real-payment test was skipped on purpose, so the receipt's deposit and settlement steps are still only shown in mock mode.
 
 ## First live $1 test (optional checklist)
 Live quotes use **mainnet** assets. Only do this with money you are fine losing to a mistake.
