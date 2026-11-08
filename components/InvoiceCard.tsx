@@ -22,7 +22,7 @@ export function InvoiceCard({ inv, children, className = "", layoutAmount }: Pro
           <motion.div layout key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 30 }}
             className="flex items-center justify-between gap-4 border-b border-ink/[.08] py-3 text-[13px]">
             <div className="min-w-0"><div className="truncate font-semibold">{it.description || "Item"}</div>{it.detail ? <div className="truncate text-xs text-ink/55">{it.detail}</div> : null}</div>
-            <span className="font-mono">{money(Number(it.amount) || 0)}</span>
+            <span className="font-mono">{money(Number(it.amount) || 0)} <span className="text-ink/45">{inv.currency}</span></span>
           </motion.div>
         ))}
       </div>

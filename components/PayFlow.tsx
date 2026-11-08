@@ -10,6 +10,7 @@ import { StatusRail } from "./StatusRail";
 import { TokenIcon } from "./TokenIcon";
 import { TopBar } from "./TopBar";
 import { dispSym, chainName, money, short } from "./fmt";
+import { isStable } from "@/lib/currency";
 import { refundAddressError } from "@/lib/validate";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -126,7 +127,7 @@ function Pick({ invoice, onQuote, onBack, mock }: { invoice: Invoice; onQuote: (
           {" "}<span className="text-base text-white/50">{sym} · {chainName(chain)}</span></div>
         <div className="grid gap-1.5 border-t border-white/10 pt-3 text-[13px]">
           <Row k={`${invoice.fromName} receives`} v={`${money(total(invoice))} ${invoice.currency} · ${chainName(invoice.payoutChain)}`} />
-          {sym !== "ETH" && <Row k="Network & route fee" v={q ? `${fee.toFixed(2)} ${sym}` : "…"} />}
+          {isStable(sym) && isStable(invoice.currency) && <Row k="Network & route fee" v={q ? `${fee.toFixed(2)} ${dispSym(sym)}` : "…"} />}
           <Row k="Estimated time" v={q?.timeEstimate ? `~ ${q.timeEstimate} sec` : "…"} />
           <Row k="Route" v="NEAR Intents · EXACT_OUTPUT" sans />
         </div>

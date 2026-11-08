@@ -27,3 +27,24 @@ test("quote API refuses an unknown invoice", async ({ request }) => {
   const r = await request.post("/api/oneclick/quote", { data: { invoiceId: "nope", symbol: "USDC", chain: "base" } });
   expect(r.status()).toBe(404);
 });
+
+test("invoice in NEAR shows that currency on the pay page and quote", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByText("Create pay link →")).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: "Receive as NEAR" }).click();
+  await page.getByText("Create pay link →").click();
+  const link = page.getByTestId("paylink"); await expect(link).toBeVisible();
+  const id = (await link.textContent())!.split("/pay/")[1].trim();
+  const saved = await page.request.get(`/api/invoices/${id}`);
+  expect(saved.ok()).toBe(true);
+  const body = await saved.json();
+  expect(body.invoice.currency).toBe("NEAR");
+  expect(body.invoice.payoutChain).toBe("near");
+
+  await page.goto(`/pay/${id}`);
+  await expect(page.getByRole("heading", { name: /requested .*NEAR/ })).toBeVisible();
+  await page.getByRole("button", { name: /^Pay .*NEAR/ }).click();
+  await expect(page.getByText("You send")).toBeVisible();
+  await expect(page.getByText(/receives/)).toBeVisible();
+  await expect(page.getByText(/NEAR · NEAR/)).toBeVisible();
+});

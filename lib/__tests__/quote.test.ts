@@ -9,6 +9,7 @@ describe("quote mapping", () => {
     expect(toBaseUnits(19.99, 18)).toBe("19990000000000000000");
     expect(toBaseUnits(12.34, 2)).toBe("1234");
     expect(toBaseUnits(12.34, 0)).toBe("12");
+    expect(toBaseUnits(12.34, 24)).toBe("12340000000000000000000000"); // NEAR / wNEAR
   });
   it("rejects bad amounts", () => {
     expect(() => toBaseUnits(-1, 6)).toThrow(); expect(() => toBaseUnits(NaN, 6)).toThrow();
@@ -20,14 +21,25 @@ describe("quote mapping", () => {
     const eth = mockQuote(2300, "ETH", 2300, 18);
     expect(eth.amountInFormatted).toBe("1.003000"); expect(eth.amountIn).toHaveLength(19);
   });
+  it("prices a non-stable destination (NEAR) using destPrice", () => {
+    const q = mockQuote(100, "USDC", 1, 6, 3.7); // 100 NEAR at $3.70
+    expect(q.amountOutFormatted).toBe("100.00");
+    expect(q.amountInFormatted).toBe("371.11"); // 100 * 3.7 * 1.003
+    const eth = mockQuote(100, "ETH", 3700, 18, 3.7);
+    expect(eth.amountOutFormatted).toBe("100.00");
+    expect(Number(eth.amountInFormatted)).toBeCloseTo((100 * 3.7 * 1.003) / 3700, 5);
+  });
 });
 describe("symbols", () => {
   it("symMatch treats USDT0 as USDT only", () => {
     expect(symMatch("USDT", "USDT")).toBe(true); expect(symMatch("USDT0", "USDT")).toBe(true);
     expect(symMatch("USDT0", "USDC")).toBe(false); expect(symMatch("USDC", "USDT")).toBe(false);
+    expect(symMatch("wNEAR", "NEAR")).toBe(true); expect(symMatch("NEAR", "NEAR")).toBe(true);
+    expect(symMatch("wNEAR", "USDC")).toBe(false);
   });
-  it("dispSym shows USDT0 as USDT", () => {
+  it("dispSym shows USDT0 as USDT and wNEAR as NEAR", () => {
     expect(dispSym("USDT0")).toBe("USDT"); expect(dispSym("USDC")).toBe("USDC");
+    expect(dispSym("wNEAR")).toBe("NEAR"); expect(dispSym("NEAR")).toBe("NEAR");
   });
 });
 describe("signature verification", () => {

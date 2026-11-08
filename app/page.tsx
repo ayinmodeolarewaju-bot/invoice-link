@@ -7,7 +7,8 @@ import { TokenIcon } from "@/components/TokenIcon";
 import { TopBar } from "@/components/TopBar";
 import { useWallet, WalletButton } from "@/components/Wallet";
 import { chainName } from "@/components/fmt";
-import type { LineItem } from "@/lib/types";
+import type { InvoiceCurrency, LineItem } from "@/lib/types";
+import { INVOICE_CURRENCIES } from "@/lib/currency";
 import { isFromWallet, onManualEdit, onWalletChange, walletPayout, type PayoutSource } from "@/lib/payout";
 
 const DEFAULT_PAYOUT = process.env.NEXT_PUBLIC_DEFAULT_PAYOUT || "purefile1686.near";
@@ -20,7 +21,7 @@ const spring = { type: "spring" as const, stiffness: 300, damping: 30 };
 
 export default function Builder() {
   const { accountId } = useWallet();
-  const [f, setF] = useState({ ...EXAMPLE, currency: "USDC" as "USDC" | "USDT", payoutAccount: DEFAULT_PAYOUT, payoutSource: "default" as PayoutSource, payoutChain: "near" });
+  const [f, setF] = useState({ ...EXAMPLE, currency: "USDC" as InvoiceCurrency, payoutAccount: DEFAULT_PAYOUT, payoutSource: "default" as PayoutSource, payoutChain: "near" });
   const [created, setCreated] = useState<{ id: string; number: string } | null>(null);
   const [busy, setBusy] = useState(false); const [err, setErr] = useState(""); const [copied, setCopied] = useState(false);
   useEffect(() => { setF((s) => ({ ...s, ...onWalletChange(s, accountId, s.payoutChain, DEFAULT_PAYOUT) })); }, [accountId, f.payoutChain]);
@@ -55,7 +56,7 @@ export default function Builder() {
       <TopBar right={<>{isExample && <span className="ex">Example data</span>}<WalletButton /></>} />
       <div className="grid min-h-[calc(100vh-64px)] lg:grid-cols-[520px_1fr]">
         <section className="flex flex-col gap-[18px] border-r border-ink/[.08] px-6 py-9 md:px-10">
-          <div><h1 className="text-[28px] font-bold tracking-[-.03em]">New invoice</h1><p className="mt-1 text-sm text-ink/55">Get paid in stablecoins from any chain.</p></div>
+          <div><h1 className="text-[28px] font-bold tracking-[-.03em]">New invoice</h1><p className="mt-1 text-sm text-ink/55">Get paid in USDC, USDT or NEAR from any chain.</p></div>
           <div className="grid grid-cols-2 gap-3">
             <L t="Client"><input className="field" value={f.clientName} onChange={(e) => set("clientName", e.target.value)} /></L>
             <L t="Client email"><input className="field" value={f.clientEmail} onChange={(e) => set("clientEmail", e.target.value)} /></L>
@@ -65,9 +66,9 @@ export default function Builder() {
             <div className="flex flex-col gap-2">
               <AnimatePresence initial={false}>
                 {f.items.map((it, i) => (
-                  <motion.div key={i} layout initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={spring} className="grid grid-cols-[1fr_110px_28px] gap-2">
+                  <motion.div key={i} layout initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={spring} className="grid grid-cols-[1fr_148px_28px] gap-2">
                     <input className="field" aria-label={`Item ${i + 1}`} value={it.description} onChange={(e) => setItem(i, "description", e.target.value)} placeholder="Description" />
-                    <input className="field text-right font-mono" aria-label={`Amount ${i + 1}`} value={String(it.amount)} onChange={(e) => setItem(i, "amount", e.target.value)} />
+                    <div className="relative"><input className="field pr-12 text-right font-mono" aria-label={`Amount ${i + 1}`} value={String(it.amount)} onChange={(e) => setItem(i, "amount", e.target.value)} /><span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-ink/45">{f.currency}</span></div>
                     <button aria-label="Remove" className="text-ink/30 hover:text-err" onClick={() => setF((s) => ({ ...s, items: s.items.filter((_, j) => j !== i) }))}>×</button>
                   </motion.div>
                 ))}
@@ -78,13 +79,13 @@ export default function Builder() {
           <div>
             <div className="lbl mb-2">Receive as</div>
             <div className="grid grid-cols-3 gap-2">
-              {(["USDC", "USDT"] as const).map((c) => (
-                <button key={c} onClick={() => set("currency", c)} className={`relative flex items-center gap-2.5 rounded-xl border bg-white px-3.5 py-3 text-sm font-semibold ${f.currency === c ? "border-violet ring-4 ring-violet/15" : "border-ink/10"}`}><TokenIcon k={c} />{c}</button>
+              {INVOICE_CURRENCIES.map((c) => (
+                <button key={c} type="button" aria-label={`Receive as ${c}`} aria-pressed={f.currency === c} onClick={() => setF((s) => ({ ...s, currency: c, payoutChain: c === "NEAR" ? "near" : s.payoutChain }))} className={`relative flex items-center gap-2.5 rounded-xl border bg-white px-3.5 py-3 text-sm font-semibold ${f.currency === c ? "border-violet ring-4 ring-violet/15" : "border-ink/10"}`}><TokenIcon k={c} />{c}</button>
               ))}
-              <select aria-label="Payout chain" value={f.payoutChain} onChange={(e) => set("payoutChain", e.target.value)} className="rounded-xl border border-ink/10 bg-white px-3 text-sm font-semibold">
-                {["near", "base", "arb", "eth", "sol"].map((c) => <option key={c} value={c}>on {chainName(c)}</option>)}
-              </select>
             </div>
+            <select aria-label="Payout chain" value={f.payoutChain} disabled={f.currency === "NEAR"} onChange={(e) => set("payoutChain", e.target.value)} className="mt-2 w-full rounded-xl border border-ink/10 bg-white px-3 py-3 text-sm font-semibold disabled:opacity-60">
+              {["near", "base", "arb", "eth", "sol"].map((c) => <option key={c} value={c}>on {chainName(c)}</option>)}
+            </select>
           </div>
           <L t="Payout to">
             <div className="relative"><input className={`field pr-32 font-mono ${payoutMissing ? "border-err ring-4 ring-err/10" : ""}`} aria-invalid={payoutMissing} aria-describedby="payout-src" value={f.payoutAccount} onChange={(e) => setF((s) => ({ ...s, ...onManualEdit(e.target.value, accountId) }))} />

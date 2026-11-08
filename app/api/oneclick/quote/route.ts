@@ -15,7 +15,8 @@ export async function POST(req: Request) {
   if (inv.status === "paid") return NextResponse.json({ error: "invoice already paid" }, { status: 409 });
   const origin = await findToken(symbol, chain);
   const dest = await findToken(inv.currency, inv.payoutChain);
-  if (!origin || !dest) return NextResponse.json({ error: `unsupported asset ${symbol} on ${chain}` }, { status: 400 });
+  if (!origin) return NextResponse.json({ error: `unsupported asset ${symbol} on ${chain}` }, { status: 400 });
+  if (!dest) return NextResponse.json({ error: `unsupported payout asset ${inv.currency} on ${inv.payoutChain}` }, { status: 400 });
   if (refundTo || !isMock()) {
     const bad = refundAddressError(origin.blockchain, String(refundTo ?? ""), CHAINS[origin.blockchain] ?? origin.blockchain);
     if (bad) return NextResponse.json({ error: bad, code: "REFUND_INVALID" }, { status: 400 });
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
   const mock = isMock();
   let q; let proof: Payment["proof"];
   try {
-    if (mock) { q = mockQuote(amountOut, origin.symbol, origin.price, origin.decimals); proof = { signature: "ed25519:SIMULATED-" + q.depositAddress.slice(2, 26), timestamp: new Date().toISOString(), correlationId: null, verified: null, simulated: true }; }
+    if (mock) { q = mockQuote(amountOut, origin.symbol, origin.price, origin.decimals, dest.price); proof = { signature: "ed25519:SIMULATED-" + q.depositAddress.slice(2, 26), timestamp: new Date().toISOString(), correlationId: null, verified: null, simulated: true }; }
     else {
       if (!refundTo) return NextResponse.json({ error: "refundTo (your address on the origin chain) is required for a live quote" }, { status: 400 });
       if (inv.payoutChain === "near") {

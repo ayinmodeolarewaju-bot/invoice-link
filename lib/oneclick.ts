@@ -14,6 +14,7 @@ const headers = () => {
 const FALLBACK: Token[] = [
   { assetId: "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1", decimals: 6, blockchain: "near", symbol: "USDC", price: 1 },
   { assetId: "nep141:usdt.tether-token.near", decimals: 6, blockchain: "near", symbol: "USDT", price: 1 },
+  { assetId: "nep141:wrap.near", decimals: 24, blockchain: "near", symbol: "wNEAR", price: 3.7 },
   { assetId: "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near", decimals: 6, blockchain: "eth", symbol: "USDC", price: 1 },
   { assetId: "nep141:eth-0xdac17f958d2ee523a2206206994597c13d831ec7.omft.near", decimals: 6, blockchain: "eth", symbol: "USDT", price: 1 },
   { assetId: "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near", decimals: 6, blockchain: "arb", symbol: "USDC", price: 1 },
@@ -37,7 +38,10 @@ export async function getTokens(): Promise<{ tokens: Token[]; live: boolean }> {
   return cache;
 }
 // USDT on some chains (e.g. Arbitrum) is listed by 1-Click as USDT0, the omnichain Tether.
-export const symMatch = (tokenSym: string, want: string) => tokenSym === want || (want === "USDT" && tokenSym === "USDT0");
+export const symMatch = (tokenSym: string, want: string) =>
+  tokenSym === want
+  || (want === "USDT" && tokenSym === "USDT0")
+  || (want === "NEAR" && (tokenSym === "wNEAR" || tokenSym === "WNEAR"));
 export async function findToken(symbol: string, chain: string) {
   const { tokens } = await getTokens();
   const hit = (t: Token) => t.blockchain === chain && symMatch(t.symbol, symbol);
@@ -74,10 +78,11 @@ export async function liveStatus(depositAddress: string, memo?: string | null) {
 }
 
 // ---- Mock: deterministic simulation of the same lifecycle ----
-export function mockQuote(amountOut: number, originSymbol: string, originPrice: number, originDecimals: number) {
+export function mockQuote(amountOut: number, originSymbol: string, originPrice: number, originDecimals: number, destPrice = 1) {
   const feeRate = 0.003; // ~ route + network fee
-  const inUsd = amountOut * (1 + feeRate);
-  const amountInNum = originSymbol === "USDC" || originSymbol === "USDT" ? inUsd : inUsd / (originPrice || 1);
+  const inUsd = amountOut * (destPrice || 1) * (1 + feeRate);
+  const stableIn = originSymbol === "USDC" || originSymbol === "USDT" || originSymbol === "USDT0";
+  const amountInNum = stableIn ? inUsd : inUsd / (originPrice || 1);
   const fmt = amountInNum.toFixed(originDecimals > 6 ? 6 : 2);
   const hex = Array.from(crypto.getRandomValues(new Uint8Array(20)), (b) => b.toString(16).padStart(2, "0")).join("");
   return {

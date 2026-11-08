@@ -19,9 +19,10 @@ The prototype was started on Oct 26, 2026, before the build window opened. Every
 | Nov 5 | Receipt PDF no longer needs Chrome: `/api/receipt/[id]/pdf` renders with `@react-pdf/renderer` (serverless-safe), same layout and proof block. Playwright stays only for e2e/shots/demo scripts. |
 | Nov 6 | Live demo on Vercel: https://invoice-link-near-0cda.vercel.app (mock mode by default, so no funds move). Invoices persist on serverless through Upstash Redis or Vercel Blob (SQLite stays for local dev). Health-checked the deployed app: create invoice, read it back, open the pay page. |
 | Nov 7 | Real-mode dry run, no funds moved: live 1-Click dry quotes from 7 chain/token routes to `purefile1686.near`, every Ed25519 signature verified and a tampered copy rejected (`node scripts/live-quote-check.mjs`). Screenshots of live quotes in the pay UI (`scripts/live-quote-shots.mjs`). See "Live quote verified" below. |
+| Nov 8 | Invoices can be denominated in USDC, USDT or NEAR. The selected currency shows in the builder, the live preview, the quote ("freelancer receives X NEAR") and the receipt. NEAR payouts settle to wNEAR (`nep141:wrap.near`) on the NEAR chain, which is how 1-Click lists native NEAR. Tests cover currency parsing, wNEAR matching and mock quotes when the destination is not $1. |
 
 ## Problem
-Freelancers chase cross-border payments: wires are slow, and crypto clients hold the "wrong" token on the "wrong" chain. Invoice Link lets the client pay with what they have; the freelancer receives exactly the invoiced amount in USDC.
+Freelancers chase cross-border payments: wires are slow, and crypto clients hold the "wrong" token on the "wrong" chain. Invoice Link lets the client pay with what they have; the freelancer receives exactly the invoiced amount in USDC, USDT or NEAR.
 
 ## Try it (do X, see Y)
 1. **Open http://localhost:3000** → you see the invoice builder, prefilled with clearly marked example data.
@@ -43,7 +44,7 @@ Freelancers chase cross-border payments: wires are slow, and crypto clients hold
 - **NEAR Wallet Selector** (`@near-wallet-selector/core` and `modal-ui`, MyNearWallet, Meteor) for the freelancer's NEAR account.
 - **NEAR accounts** are the payout identity. The demo payout account is `purefile1686.near` (live on mainnet).
 - **Quote signature verification**: each live quote's Ed25519 `signature` is checked with `verifyQuoteSignature()` from `@defuse-protocol/one-click-sdk-typescript`, and the quote is refused if the check fails. The signature is stored and shown on the receipt.
-- **NEP-141 stablecoins**: payout is USDC settled through the Intents network.
+- **NEP-141 assets**: payout is USDC, USDT or NEAR (wNEAR / `wrap.near`) settled through the Intents network.
 
 ## Run
 ```bash

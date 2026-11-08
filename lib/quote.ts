@@ -1,5 +1,5 @@
 // Pure helpers for mapping an invoice total to a 1-Click EXACT_OUTPUT quote request.
-// Invoice amounts are in dollars with 2 decimals; 1-Click wants an integer string in the destination token's base units.
+// Invoice amounts are in the destination currency with 2 decimals; 1-Click wants an integer string in that token's base units.
 export function toBaseUnits(amount: number, decimals: number): string {
   if (!Number.isFinite(amount) || amount < 0) throw new Error("invalid amount");
   const cents = BigInt(Math.round(amount * 100));

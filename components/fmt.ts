@@ -3,7 +3,7 @@ export const date = (s: string) => new Date(s).toLocaleDateString("en-US", { mon
 export const time = (s: string) => new Date(s).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Africa/Lagos" });
 export const short = (a: string, h = 6, t = 4) => (a.length > h + t + 1 ? `${a.slice(0, h)}…${a.slice(-t)}` : a);
 export const CHAINS: Record<string, string> = { near: "NEAR", eth: "Ethereum", arb: "Arbitrum", base: "Base", sol: "Solana", pol: "Polygon", bsc: "BNB Chain", op: "Optimism", avax: "Avalanche", gnosis: "Gnosis", ton: "TON", tron: "Tron", btc: "Bitcoin", sui: "Sui", aptos: "Aptos", bera: "Berachain" };
-export const dispSym = (s: string) => (s === "USDT0" ? "USDT" : s);
+export const dispSym = (s: string) => (s === "USDT0" ? "USDT" : s === "wNEAR" || s === "WNEAR" ? "NEAR" : s);
 export const EXPLORER_TX: Record<string, string> = { near: "https://nearblocks.io/txns/", eth: "https://etherscan.io/tx/", arb: "https://arbiscan.io/tx/", base: "https://basescan.org/tx/", op: "https://optimistic.etherscan.io/tx/", pol: "https://polygonscan.com/tx/", bsc: "https://bscscan.com/tx/", avax: "https://snowtrace.io/tx/", sol: "https://solscan.io/tx/", gnosis: "https://gnosisscan.io/tx/", tron: "https://tronscan.org/#/transaction/", ton: "https://tonviewer.com/transaction/" };
 export const txUrl = (chain: string, tx: string) => (EXPLORER_TX[chain] ? EXPLORER_TX[chain] + tx : null);
 export const intentsUrl = (depositAddress: string) => `https://explorer.near-intents.org/transactions/${depositAddress}`;
