@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getInvoice, getPaymentByDeposit, saveInvoice, savePayment } from "@/lib/db";
+import { notifyPaid } from "@/lib/notify";
 import { liveStatus, mockStatusAt } from "@/lib/oneclick";
 import { advance, isFinal } from "@/lib/status";
 export const runtime = "nodejs";
@@ -19,7 +20,15 @@ export async function GET(req: Request) {
     const step = advance(p, next, now);
     if (step.changed) {
       p.history = step.history; p.status = step.status; p.updatedAt = now; await savePayment(p);
-      if (next === "SUCCESS") { const inv = await getInvoice(p.invoiceId); if (inv) { inv.status = "paid"; await saveInvoice(inv); } }
+      if (next === "SUCCESS") {
+        const inv = await getInvoice(p.invoiceId);
+        if (inv) {
+          inv.status = "paid";
+          await saveInvoice(inv);
+          // Fire-and-forget: webhook + optional Resend email. Never block the status response.
+          void notifyPaid(inv, p).catch(() => undefined);
+        }
+      }
     }
   }
   return NextResponse.json({ payment: p });

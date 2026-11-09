@@ -6,5 +6,5 @@ export default defineConfig({
   use: { baseURL: `http://localhost:${PORT}`, trace: "retain-on-failure",
     ...(process.env.CHROME ? { launchOptions: { executablePath: process.env.CHROME, args: ["--no-sandbox"] } } : {}) },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: { command: `npx next start -p ${PORT}`, port: PORT, reuseExistingServer: !process.env.CI, timeout: 120_000, env: { MOCK_1CLICK: "1" } },
+  webServer: { command: `npx next start -p ${PORT}`, port: PORT, reuseExistingServer: !process.env.CI, timeout: 120_000, env: { MOCK_1CLICK: "1", VERCEL: "1" } },
 });

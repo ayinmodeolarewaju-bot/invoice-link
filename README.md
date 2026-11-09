@@ -20,6 +20,7 @@ The prototype was started on Oct 26, 2026, before the build window opened. Every
 | Nov 6 | Live demo on Vercel: https://invoice-link-near-0cda.vercel.app (mock mode by default, so no funds move). Invoices persist on serverless through Upstash Redis or Vercel Blob (SQLite stays for local dev). Health-checked the deployed app: create invoice, read it back, open the pay page. |
 | Nov 7 | Real-mode dry run, no funds moved: live 1-Click dry quotes from 7 chain/token routes to `purefile1686.near`, every Ed25519 signature verified and a tampered copy rejected (`node scripts/live-quote-check.mjs`). Screenshots of live quotes in the pay UI (`scripts/live-quote-shots.mjs`). See "Live quote verified" below. |
 | Nov 8 | Invoices can be denominated in USDC, USDT or NEAR. The selected currency shows in the builder, the live preview, the quote ("freelancer receives X NEAR") and the receipt. NEAR payouts settle to wNEAR (`nep141:wrap.near`) on the NEAR chain, which is how 1-Click lists native NEAR. Tests cover currency parsing, wNEAR matching and mock quotes when the destination is not $1. |
+| Nov 9 | Notify on paid: optional `PAID_WEBHOOK_URL` POST plus optional Resend email (`RESEND_API_KEY`, no-op when unset). Open-tab paid toast and favicon badge when status reaches SUCCESS. |
 
 ## Problem
 Freelancers chase cross-border payments: wires are slow, and crypto clients hold the "wrong" token on the "wrong" chain. Invoice Link lets the client pay with what they have; the freelancer receives exactly the invoiced amount in USDC, USDT or NEAR.
@@ -71,6 +72,7 @@ npm run shots      # Playwright walk-through → shots/ + shots/08-receipt.pdf (
 | Quote signature | placeholder `ed25519:SIMULATED-…`, labelled simulated | verified with the SDK; the quote is refused if invalid |
 | Explorer links | none (tx hash shown as simulated) | chain explorer (nearblocks, arbiscan, etherscan, solscan…) and explorer.near-intents.org |
 | Status | a timeline: 0s known tx, 3s processing, 8s success | live `/v0/status` polling |
+| Paid notify | same webhook/email hooks (payload marked `mock: true`) | same hooks on real SUCCESS |
 
 ## Live quote verified (real 1-Click API, no funds)
 

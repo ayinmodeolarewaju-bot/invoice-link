@@ -12,6 +12,7 @@ import { TopBar } from "./TopBar";
 import { dispSym, chainName, money, short } from "./fmt";
 import { isStable } from "@/lib/currency";
 import { refundAddressError } from "@/lib/validate";
+import { PaidNotify, useDefaultFavicon } from "./PaidNotify";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const step = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -12 }, transition: { duration: 0.4, ease: EASE } };
@@ -23,6 +24,7 @@ const EXAMPLE_REFUND: Record<string, string> = { sol: "7xKXtg2CW87d97TXJSDpbD5jB
 
 export function PayFlow({ invoice, initialPayment, mock }: { invoice: Invoice; initialPayment: Payment | null; mock: boolean }) {
   const router = useRouter();
+  useDefaultFavicon();
   const active = initialPayment && initialPayment.status !== "PENDING_DEPOSIT" ? "status" : initialPayment ? "send" : "review";
   const [s, setS] = useState<Step>(invoice.status === "paid" ? "status" : active);
   const [payment, setPayment] = useState<Payment | null>(initialPayment);
@@ -192,8 +194,10 @@ function Status({ p, invoice, onUpdate }: { p: Payment; invoice: Invoice; onUpda
   const done = p.status === "SUCCESS";
   const label = { PENDING_DEPOSIT: "Awaiting deposit", KNOWN_DEPOSIT_TX: "Deposit seen", PROCESSING: "Processing", SUCCESS: "Paid", INCOMPLETE_DEPOSIT: "Incomplete deposit", REFUNDED: "Refunded", FAILED: "Failed" }[p.status];
   const tone = done ? "text-mint" : ["REFUNDED", "FAILED", "INCOMPLETE_DEPOSIT"].includes(p.status) ? "text-err" : "text-violet";
+  const amountLabel = `${money(total(invoice))} ${invoice.currency}`;
   return (
     <div>
+      <PaidNotify show={done} amountLabel={amountLabel} />
       <div className="flex items-center justify-between gap-3"><h2 className="text-[22px] font-bold tracking-[-.02em]">{done ? "Payment complete" : "Payment in progress"}</h2>
         <motion.span key={p.status} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`pill ${tone}`}><Pulse c={done ? "bg-mint" : "bg-violet"} />{label}</motion.span></div>
       <p className="mb-6 mt-1.5 text-sm text-ink/55">{done ? "Opening your receipt…" : "You can close this page. The status updates on its own."}</p>

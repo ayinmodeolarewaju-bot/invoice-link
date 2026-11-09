@@ -16,6 +16,7 @@ test("freelancer creates a link and the client pays it (mock mode)", async ({ pa
   await expect(page.getByText("Send exactly")).toBeVisible();
   await page.getByRole("button", { name: /Simulate deposit/ }).click();
   await expect(page.getByText("Payment in progress")).toBeVisible();
+  await expect(page.getByTestId("paid-toast")).toBeVisible({ timeout: 30_000 });
   await page.waitForURL(/\/receipt\//, { timeout: 30_000 });
   await expect(page.getByText(/Simulated · not on-chain/)).toBeVisible();
 
