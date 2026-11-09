@@ -62,6 +62,10 @@ npm run shots      # Playwright walk-through → shots/ + shots/08-receipt.pdf (
 | `ONECLICK_JWT` | empty | Optional partner key from partners.near-intents.org (without it, 1-Click adds a 0.25% fee) |
 | `NEXT_PUBLIC_DEFAULT_PAYOUT` | `purefile1686.near` | Payout account prefilled in the builder (must exist on mainnet for live quotes) |
 | `NEXT_PUBLIC_NEAR_NETWORK` | `testnet` | Network the wallet selector uses (use `mainnet` for a live payout account) |
+| `PAID_WEBHOOK_URL` | empty | Optional: POST `invoice.paid` JSON here when a payment reaches SUCCESS |
+| `RESEND_API_KEY` | empty | Optional Resend key; when unset, paid emails are a no-op |
+| `NOTIFY_EMAIL` | empty | Optional paid-email recipient (falls back to the invoice client email) |
+| `NOTIFY_FROM_EMAIL` | Resend onboarding | From address for paid emails |
 
 ## Real vs mock
 | Piece | Mock (default) | Real (`MOCK_1CLICK=0`) |
