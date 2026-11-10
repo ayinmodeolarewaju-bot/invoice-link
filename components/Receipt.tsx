@@ -5,7 +5,7 @@ import { total } from "@/lib/types";
 import { TopBar } from "./TopBar";
 import { chainName, dispSym, intentsUrl, money, short, txUrl } from "./fmt";
 
-export function Receipt({ invoice, payment }: { invoice: Invoice; payment: Payment | null }) {
+export function Receipt({ invoice, payment, fingerprint = null }: { invoice: Invoice; payment: Payment | null; fingerprint?: string | null }) {
   if (!payment) return (<div className="min-h-screen"><TopBar /><div className="grid place-items-center p-16 text-center"><div><h1 className="text-2xl font-bold">Not paid yet</h1><a className="mt-3 inline-block text-violet" href={`/pay/${invoice.id}`}>Go to the pay page →</a></div></div></div>);
   const settled = payment.history.find((h) => h.status === "SUCCESS")?.at ?? payment.updatedAt;
   const when = new Date(settled).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Africa/Lagos" }) + " WAT";
@@ -35,6 +35,7 @@ export function Receipt({ invoice, payment }: { invoice: Invoice; payment: Payme
               <div className="flex justify-between gap-3"><span className="text-ink/55">Signed at</span><span className="font-mono text-[11px]">{pr?.timestamp ? new Date(pr.timestamp).toISOString().replace("T", " ").slice(0, 19) + " UTC" : "n/a"}</span></div>
               <div className="flex justify-between gap-3"><span className="text-ink/55">Deposit tx{sim && " (simulated)"}</span>{txLink ? <a className="font-mono text-[11px] text-violet underline" href={txLink} target="_blank" rel="noreferrer">{short(payment.txHash!, 10, 6)} ↗</a> : <span className="font-mono text-[11px]">{payment.txHash ? short(payment.txHash, 10, 6) : "n/a"}</span>}</div>
               {!sim && <div className="flex justify-between gap-3"><span className="text-ink/55">Intents explorer</span><a className="font-mono text-[11px] text-violet underline" href={intentsUrl(payment.depositAddress)} target="_blank" rel="noreferrer">{short(payment.depositAddress)} ↗</a></div>}
+              {fingerprint && <div className="flex justify-between gap-3"><span className="text-ink/55">Receipt SHA-256</span><a className="whitespace-nowrap font-mono text-[11px] text-violet underline" data-testid="fingerprint" href={`/api/receipt/${invoice.id}/fingerprint`} target="_blank" rel="noreferrer" title={fingerprint}>{short(fingerprint, 10, 6)} ↗</a></div>}
             </div>
             <p className="mt-2 text-[10.5px] leading-snug text-ink/50">{sim ? "Mock mode: no funds moved. Signature and tx hash are placeholders." : "Ed25519 signature checked with verifyQuoteSignature() from the 1-Click SDK before the deposit address was shown."}</p>
           </div>

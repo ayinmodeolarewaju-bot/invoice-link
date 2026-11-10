@@ -21,6 +21,7 @@ The prototype was started on Oct 26, 2026, before the build window opened. Every
 | Nov 7 | Real-mode dry run, no funds moved: live 1-Click dry quotes from 7 chain/token routes to `purefile1686.near`, every Ed25519 signature verified and a tampered copy rejected (`node scripts/live-quote-check.mjs`). Screenshots of live quotes in the pay UI (`scripts/live-quote-shots.mjs`). See "Live quote verified" below. |
 | Nov 8 | Invoices can be denominated in USDC, USDT or NEAR. The selected currency shows in the builder, the live preview, the quote ("freelancer receives X NEAR") and the receipt. NEAR payouts settle to wNEAR (`nep141:wrap.near`) on the NEAR chain, which is how 1-Click lists native NEAR. Tests cover currency parsing, wNEAR matching and mock quotes when the destination is not $1. |
 | Nov 9 | Notify on paid: optional `PAID_WEBHOOK_URL` POST plus optional Resend email (`RESEND_API_KEY`, no-op when unset). Open-tab paid toast and favicon badge when status reaches SUCCESS. |
+| Nov 10 | Receipt fingerprint: every paid receipt now shows a SHA-256 over a canonical JSON of what it asserts (invoice, amounts, payout account, deposit tx, quote signature, settle time). `GET /api/receipt/<id>/fingerprint` returns the canonical string and hash so anyone can re-hash and compare; the PDF carries the same hash. This is the payload an on-chain anchor would commit to. The anchor transaction itself is not sent yet, because it needs a small amount of NEAR for gas. Unit and e2e tests added. |
 
 ## Problem
 Freelancers chase cross-border payments: wires are slow, and crypto clients hold the "wrong" token on the "wrong" chain. Invoice Link lets the client pay with what they have; the freelancer receives exactly the invoiced amount in USDC, USDT or NEAR.
@@ -118,7 +119,7 @@ Live quotes use **mainnet** assets. Only do this with money you are fine losing 
 
 ## Limitations
 - Real mode has been tested only up to verified **dry** quotes (no funds sent yet).
-- The receipt has no on-chain anchor of its own: it links to the deposit tx and the Intents explorer.
+- The receipt has no on-chain anchor of its own yet. It carries a SHA-256 fingerprint (`/api/receipt/<id>/fingerprint`) that can be re-checked by anyone, and links to the deposit tx and the Intents explorer.
 - The PDF is generated with `@react-pdf/renderer` (no Chrome). Layout mirrors the on-screen receipt, including the proof block.
 - Refund-address checks are format-only (no checksum or on-chain lookup); 1-Click still has the final say.
 - The payout field autofills from the connected wallet but stays editable (on purpose, so you can be paid to another account).

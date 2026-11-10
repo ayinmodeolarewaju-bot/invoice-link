@@ -38,7 +38,7 @@ describe("postPaidWebhook", () => {
   });
   it("POSTs JSON to the webhook URL", async () => {
     process.env.PAID_WEBHOOK_URL = "https://hooks.example/paid";
-    const fetchImpl = vi.fn(async () => new Response("ok", { status: 200 }));
+    const fetchImpl = vi.fn(async (_url: string, _init?: RequestInit) => new Response("ok", { status: 200 }));
     expect(await postPaidWebhook(invoice, payment, fetchImpl as unknown as typeof fetch)).toBe("sent");
     expect(fetchImpl).toHaveBeenCalledOnce();
     const [url, init] = fetchImpl.mock.calls[0]!;
@@ -50,7 +50,7 @@ describe("postPaidWebhook", () => {
   });
   it("returns failed on non-2xx", async () => {
     process.env.PAID_WEBHOOK_URL = "https://hooks.example/paid";
-    const fetchImpl = vi.fn(async () => new Response("nope", { status: 500 }));
+    const fetchImpl = vi.fn(async (_url: string, _init?: RequestInit) => new Response("nope", { status: 500 }));
     expect(await postPaidWebhook(invoice, payment, fetchImpl as unknown as typeof fetch)).toBe("failed");
   });
 });
@@ -66,7 +66,7 @@ describe("sendPaidEmail", () => {
   });
   it("posts to Resend with the client email", async () => {
     process.env.RESEND_API_KEY = "re_test";
-    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ id: "1" }), { status: 200 }));
+    const fetchImpl = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({ id: "1" }), { status: 200 }));
     expect(await sendPaidEmail(invoice, payment, fetchImpl as unknown as typeof fetch)).toBe("sent");
     const [url, init] = fetchImpl.mock.calls[0]!;
     expect(url).toBe("https://api.resend.com/emails");
@@ -79,7 +79,7 @@ describe("sendPaidEmail", () => {
   it("prefers NOTIFY_EMAIL over client email", async () => {
     process.env.RESEND_API_KEY = "re_test";
     process.env.NOTIFY_EMAIL = "brook@example.com";
-    const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
+    const fetchImpl = vi.fn(async (_url: string, _init?: RequestInit) => new Response("{}", { status: 200 }));
     await sendPaidEmail(invoice, payment, fetchImpl as unknown as typeof fetch);
     const body = JSON.parse(String((fetchImpl.mock.calls[0]![1] as RequestInit).body));
     expect(body.to).toEqual(["brook@example.com"]);
@@ -90,7 +90,7 @@ describe("notifyPaid", () => {
   it("runs webhook and email in parallel and reports both", async () => {
     process.env.PAID_WEBHOOK_URL = "https://hooks.example/paid";
     process.env.RESEND_API_KEY = "re_test";
-    const fetchImpl = vi.fn(async () => new Response("ok", { status: 200 }));
+    const fetchImpl = vi.fn(async (_url: string, _init?: RequestInit) => new Response("ok", { status: 200 }));
     const r = await notifyPaid(invoice, payment, fetchImpl as unknown as typeof fetch);
     expect(r).toEqual({ webhook: "sent", email: "sent" });
     expect(fetchImpl).toHaveBeenCalledTimes(2);

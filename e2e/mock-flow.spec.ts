@@ -19,6 +19,10 @@ test("freelancer creates a link and the client pays it (mock mode)", async ({ pa
   await expect(page.getByTestId("paid-toast")).toBeVisible({ timeout: 30_000 });
   await page.waitForURL(/\/receipt\//, { timeout: 30_000 });
   await expect(page.getByText(/Simulated · not on-chain/)).toBeVisible();
+  await expect(page.getByTestId("fingerprint")).toBeVisible();
+  const fp = await (await page.request.get(`/api/receipt/${id}/fingerprint`)).json();
+  expect(fp.hash).toMatch(/^[0-9a-f]{64}$/);
+  expect(await page.getByTestId("fingerprint").getAttribute("title")).toBe(fp.hash);
 
   const inv = await page.request.get(`/api/invoices/${id}`); expect(inv.ok()).toBe(true);
   expect(JSON.stringify(await inv.json())).toContain('"paid"');

@@ -35,7 +35,7 @@ const s = StyleSheet.create({
   footer: { marginTop: 14, textAlign: "center", fontSize: 8, color: "#8a8c92" },
 });
 
-export function ReceiptPdf({ invoice, payment }: { invoice: Invoice; payment: Payment }) {
+export function ReceiptPdf({ invoice, payment, fingerprint = null }: { invoice: Invoice; payment: Payment; fingerprint?: string | null }) {
   const settled = payment.history.find((h) => h.status === "SUCCESS")?.at ?? payment.updatedAt;
   const when =
     new Date(settled).toLocaleString("en-US", {
@@ -106,6 +106,12 @@ export function ReceiptPdf({ invoice, payment }: { invoice: Invoice; payment: Pa
               <View style={s.proofRow}>
                 <Text style={s.proofK}>Intents explorer</Text>
                 <Link src={intents} style={s.link}>{short(payment.depositAddress)}</Link>
+              </View>
+            ) : null}
+            {fingerprint ? (
+              <View style={s.proofRow}>
+                <Text style={s.proofK}>Receipt SHA-256</Text>
+                <Text style={s.proofV}>{short(fingerprint, 10, 6)}</Text>
               </View>
             ) : null}
             <Text style={s.note}>
