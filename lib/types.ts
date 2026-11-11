@@ -4,6 +4,8 @@ export type Invoice = {
   id: string; number: string; fromName: string; fromTagline: string; clientName: string; clientEmail: string; clientLocation?: string;
   items: LineItem[]; currency: InvoiceCurrency; payoutAccount: string; payoutChain: string; ownerAccount?: string | null;
   issuedAt: string; dueAt: string; status: "open" | "paid"; createdAt: string; isExample?: boolean;
+  /** On-chain anchor of the receipt fingerprint (not part of the fingerprint itself). */
+  anchor?: import("./anchor").Anchor | null;
 };
 export type OneClickStatus = "PENDING_DEPOSIT" | "KNOWN_DEPOSIT_TX" | "PROCESSING" | "SUCCESS" | "INCOMPLETE_DEPOSIT" | "REFUNDED" | "FAILED";
 export type Payment = {

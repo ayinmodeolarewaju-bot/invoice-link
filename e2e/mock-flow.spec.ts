@@ -23,6 +23,12 @@ test("freelancer creates a link and the client pays it (mock mode)", async ({ pa
   const fp = await (await page.request.get(`/api/receipt/${id}/fingerprint`)).json();
   expect(fp.hash).toMatch(/^[0-9a-f]{64}$/);
   expect(await page.getByTestId("fingerprint").getAttribute("title")).toBe(fp.hash);
+  // On-chain anchor: offered on the paid receipt, not anchored yet, and a bogus tx hash is refused.
+  await expect(page.getByTestId("anchor")).toContainText(/anchor on NEAR/i);
+  const a0 = await (await page.request.get(`/api/receipt/${id}/anchor`)).json();
+  expect(a0).toMatchObject({ anchored: false, sha256: fp.hash });
+  const bad = await page.request.post(`/api/receipt/${id}/anchor`, { data: { txHash: "nope", signer: "brook.testnet", network: "testnet" } });
+  expect(bad.status()).toBe(422);
 
   const inv = await page.request.get(`/api/invoices/${id}`); expect(inv.ok()).toBe(true);
   expect(JSON.stringify(await inv.json())).toContain('"paid"');

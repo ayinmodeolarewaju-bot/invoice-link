@@ -4,8 +4,9 @@ import { total } from "./types";
 
 // Receipt fingerprint: SHA-256 over a canonical JSON of the facts a receipt asserts.
 // Anyone can fetch /api/receipt/<id>/fingerprint, re-hash `canonical` and compare.
-// This is the payload an on-chain anchor would commit to (anchoring itself is not done yet).
-export const FINGERPRINT_VERSION = "invoicelink-receipt-v1";
+// This is the payload an on-chain anchor would commit to (see lib/anchor.ts for the wallet-signed NEAR anchor).
+import { FINGERPRINT_VERSION } from "./version";
+export { FINGERPRINT_VERSION };
 
 export function receiptFacts(invoice: Invoice, payment: Payment) {
   const settledAt = payment.history.find((h) => h.status === "SUCCESS")?.at ?? payment.updatedAt;

@@ -4,8 +4,9 @@ import { createContext, useContext, useEffect, useState } from "react";
 import type { WalletSelector } from "@near-wallet-selector/core";
 import type { WalletSelectorModal } from "@near-wallet-selector/modal-ui";
 
-type Ctx = { accountId: string | null; ready: boolean; signIn: () => void; signOut: () => void; network: string };
-const WalletCtx = createContext<Ctx>({ accountId: null, ready: false, signIn: () => {}, signOut: () => {}, network: "testnet" });
+export type SimpleFnCall = { signerId: string; receiverId: string; actions: { type: "FunctionCall"; params: { methodName: string; args: object; gas: string; deposit: string } }[] };
+type Ctx = { accountId: string | null; ready: boolean; signIn: () => void; signOut: () => void; network: string; signAndSend: (tx: SimpleFnCall) => Promise<unknown> };
+const WalletCtx = createContext<Ctx>({ accountId: null, ready: false, signIn: () => {}, signOut: () => {}, network: "testnet", signAndSend: async () => { throw new Error("wallet not ready"); } });
 export const useWallet = () => useContext(WalletCtx);
 const network = (process.env.NEXT_PUBLIC_NEAR_NETWORK as "testnet" | "mainnet") || "testnet";
 
@@ -31,7 +32,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     return () => unsub?.();
   }, []);
   const signOut = async () => { try { (await selector?.wallet())?.signOut(); } catch {} setAccountId(null); };
-  return <WalletCtx.Provider value={{ accountId, ready: !!selector, signIn: () => modal?.show(), signOut, network }}>{children}</WalletCtx.Provider>;
+  // Opens the user's wallet to sign; the app never sees a private key.
+  const signAndSend = async (tx: SimpleFnCall) => {
+    const wallet = await selector?.wallet(); if (!wallet) throw new Error("Connect a NEAR wallet first");
+    const { actionCreators } = await import("@near-wallet-selector/core");
+    const actions = tx.actions.map((a) => actionCreators.functionCall(a.params.methodName, a.params.args, BigInt(a.params.gas), BigInt(a.params.deposit)));
+    return wallet.signAndSendTransaction({ signerId: tx.signerId, receiverId: tx.receiverId, actions });
+  };
+  return <WalletCtx.Provider value={{ accountId, ready: !!selector, signIn: () => modal?.show(), signOut, network, signAndSend }}>{children}</WalletCtx.Provider>;
 }
 
 export function WalletButton() {

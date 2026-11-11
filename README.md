@@ -22,6 +22,7 @@ The prototype was started on Oct 26, 2026, before the build window opened. Every
 | Nov 8 | Invoices can be denominated in USDC, USDT or NEAR. The selected currency shows in the builder, the live preview, the quote ("freelancer receives X NEAR") and the receipt. NEAR payouts settle to wNEAR (`nep141:wrap.near`) on the NEAR chain, which is how 1-Click lists native NEAR. Tests cover currency parsing, wNEAR matching and mock quotes when the destination is not $1. |
 | Nov 9 | Notify on paid: optional `PAID_WEBHOOK_URL` POST plus optional Resend email (`RESEND_API_KEY`, no-op when unset). Open-tab paid toast and favicon badge when status reaches SUCCESS. |
 | Nov 10 | Receipt fingerprint: every paid receipt now shows a SHA-256 over a canonical JSON of what it asserts (invoice, amounts, payout account, deposit tx, quote signature, settle time). `GET /api/receipt/<id>/fingerprint` returns the canonical string and hash so anyone can re-hash and compare; the PDF carries the same hash. This is the payload an on-chain anchor would commit to. The anchor transaction itself is not sent yet, because it needs a small amount of NEAR for gas. Unit and e2e tests added. |
+| Nov 11 | On-chain receipt anchor (wallet-signed): a paid receipt now offers **Anchor on NEAR**. The payee's own wallet (Wallet Selector: MyNearWallet or Meteor) signs one zero-deposit call whose args carry the receipt SHA-256; the server checks the tx on NEAR RPC before storing its hash and shows a NearBlocks link plus a `verify` link. The app never holds a private key and sends nothing itself. Unit tests with a mocked RPC plus e2e coverage. See "On-chain receipt anchor" below. |
 
 ## Problem
 Freelancers chase cross-border payments: wires are slow, and crypto clients hold the "wrong" token on the "wrong" chain. Invoice Link lets the client pay with what they have; the freelancer receives exactly the invoiced amount in USDC, USDT or NEAR.
@@ -63,10 +64,24 @@ npm run shots      # Playwright walk-through → shots/ + shots/08-receipt.pdf (
 | `ONECLICK_JWT` | empty | Optional partner key from partners.near-intents.org (without it, 1-Click adds a 0.25% fee) |
 | `NEXT_PUBLIC_DEFAULT_PAYOUT` | `purefile1686.near` | Payout account prefilled in the builder (must exist on mainnet for live quotes) |
 | `NEXT_PUBLIC_NEAR_NETWORK` | `testnet` | Network the wallet selector uses (use `mainnet` for a live payout account) |
+| `NEXT_PUBLIC_ANCHOR` | `1` | Set `0` to hide "Anchor on NEAR" on receipts |
 | `PAID_WEBHOOK_URL` | empty | Optional: POST `invoice.paid` JSON here when a payment reaches SUCCESS |
 | `RESEND_API_KEY` | empty | Optional Resend key; when unset, paid emails are a no-op |
 | `NOTIFY_EMAIL` | empty | Optional paid-email recipient (falls back to the invoice client email) |
 | `NOTIFY_FROM_EMAIL` | Resend onboarding | From address for paid emails |
+
+## On-chain receipt anchor
+
+A paid receipt can be committed to NEAR so the fingerprint is timestamped by the chain, not by this app.
+
+1. On a paid receipt, connect a NEAR wallet and click **Anchor on NEAR**. Your wallet opens and asks you to sign one transaction.
+2. The transaction is a `FunctionCall` to `ft_balance_of` on the wNEAR contract (`wrap.near` on mainnet, `wrap.testnet` on testnet) with **0 deposit**. That method is read-only, and near-sdk ignores unknown JSON fields, so the extra `invoicelink_receipt: { v, invoice, sha256 }` argument is simply recorded in the transaction forever. Nothing is transferred; the only cost is gas (a fraction of 0.01 NEAR, unused gas is refunded). The contract can be overridden with `NEXT_PUBLIC_ANCHOR_CONTRACT_MAINNET` / `_TESTNET`.
+3. The app posts the tx hash to `POST /api/receipt/<id>/anchor`, which fetches it from NEAR RPC and only stores it if it succeeded, went to the anchor contract and carries this receipt's id and current SHA-256.
+4. The receipt then shows **Anchored on NEAR ✓** with a NearBlocks link and a `verify` link.
+
+**How to verify an anchor yourself:** open `GET /api/receipt/<id>/anchor`, which re-fetches the tx from RPC and re-checks it against the receipt's current fingerprint (`verified: true`). Or do it by hand: open the tx on NearBlocks, base64-decode the call args, and compare `invoicelink_receipt.sha256` with the `hash` from `/api/receipt/<id>/fingerprint` (which you can re-hash from its `canonical` string).
+
+The network follows `NEXT_PUBLIC_NEAR_NETWORK`. Set `NEXT_PUBLIC_ANCHOR=0` to hide the button. No key or seed phrase is ever requested, stored or sent to the server.
 
 ## Real vs mock
 | Piece | Mock (default) | Real (`MOCK_1CLICK=0`) |
@@ -119,7 +134,7 @@ Live quotes use **mainnet** assets. Only do this with money you are fine losing 
 
 ## Limitations
 - Real mode has been tested only up to verified **dry** quotes (no funds sent yet).
-- The receipt has no on-chain anchor of its own yet. It carries a SHA-256 fingerprint (`/api/receipt/<id>/fingerprint`) that can be re-checked by anyone, and links to the deposit tx and the Intents explorer.
+- Anchoring is optional and payee-signed: a receipt is only on-chain once someone clicks "Anchor on NEAR" and signs. Until then it carries a SHA-256 fingerprint (`/api/receipt/<id>/fingerprint`) that anyone can re-check, plus links to the deposit tx and the Intents explorer. Anchors use the network set in `NEXT_PUBLIC_NEAR_NETWORK`.
 - The PDF is generated with `@react-pdf/renderer` (no Chrome). Layout mirrors the on-screen receipt, including the proof block.
 - Refund-address checks are format-only (no checksum or on-chain lookup); 1-Click still has the final say.
 - The payout field autofills from the connected wallet but stays editable (on purpose, so you can be paid to another account).

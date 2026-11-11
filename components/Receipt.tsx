@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import type { Invoice, Payment } from "@/lib/types";
 import { total } from "@/lib/types";
 import { TopBar } from "./TopBar";
+import { AnchorReceipt } from "./AnchorReceipt";
 import { chainName, dispSym, intentsUrl, money, short, txUrl } from "./fmt";
 
 export function Receipt({ invoice, payment, fingerprint = null }: { invoice: Invoice; payment: Payment | null; fingerprint?: string | null }) {
@@ -36,6 +37,7 @@ export function Receipt({ invoice, payment, fingerprint = null }: { invoice: Inv
               <div className="flex justify-between gap-3"><span className="text-ink/55">Deposit tx{sim && " (simulated)"}</span>{txLink ? <a className="font-mono text-[11px] text-violet underline" href={txLink} target="_blank" rel="noreferrer">{short(payment.txHash!, 10, 6)} ↗</a> : <span className="font-mono text-[11px]">{payment.txHash ? short(payment.txHash, 10, 6) : "n/a"}</span>}</div>
               {!sim && <div className="flex justify-between gap-3"><span className="text-ink/55">Intents explorer</span><a className="font-mono text-[11px] text-violet underline" href={intentsUrl(payment.depositAddress)} target="_blank" rel="noreferrer">{short(payment.depositAddress)} ↗</a></div>}
               {fingerprint && <div className="flex justify-between gap-3"><span className="text-ink/55">Receipt SHA-256</span><a className="whitespace-nowrap font-mono text-[11px] text-violet underline" data-testid="fingerprint" href={`/api/receipt/${invoice.id}/fingerprint`} target="_blank" rel="noreferrer" title={fingerprint}>{short(fingerprint, 10, 6)} ↗</a></div>}
+              {fingerprint && process.env.NEXT_PUBLIC_ANCHOR !== "0" && <AnchorReceipt invoiceId={invoice.id} fingerprint={fingerprint} initial={invoice.anchor ?? null} />}
             </div>
             <p className="mt-2 text-[10.5px] leading-snug text-ink/50">{sim ? "Mock mode: no funds moved. Signature and tx hash are placeholders." : "Ed25519 signature checked with verifyQuoteSignature() from the 1-Click SDK before the deposit address was shown."}</p>
           </div>
