@@ -30,7 +30,7 @@ export function Receipt({ invoice, payment, fingerprint = null }: { invoice: Inv
             <motion.div key={k} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 + i * 0.05 }} className="flex justify-between gap-3 border-b border-ink/[.08] py-2.5 text-[13px]"><span className="text-ink/55">{k}</span><span className="text-right font-mono text-xs">{v}</span></motion.div>
           ))}
           <div className="mt-4 rounded-xl bg-paper p-3.5" data-testid="proof">
-            <div className="flex items-center justify-between"><span className="lbl">Proof</span>{sim ? <span className="pill text-signal">◐ Simulated · not on-chain</span> : <span className="pill text-mint">✓ Signature verified</span>}</div>
+            <div className="flex items-center justify-between"><span className="lbl">Proof</span>{sim ? <span className="pill text-signal">◐ Simulated · not on-chain</span> : <span className="pill text-mint-ink">✓ Signature verified</span>}</div>
             <div className="mt-2 grid gap-1.5 text-[12px]">
               <div className="flex justify-between gap-3"><span className="text-ink/55">Quote signature</span><span className="whitespace-nowrap font-mono text-[11px]" title={pr?.signature}>{pr?.signature ? short(pr.signature, 12, 6) : "not recorded"}</span></div>
               <div className="flex justify-between gap-3"><span className="text-ink/55">Signed at</span><span className="font-mono text-[11px]">{pr?.timestamp ? new Date(pr.timestamp).toISOString().replace("T", " ").slice(0, 19) + " UTC" : "n/a"}</span></div>
@@ -41,7 +41,7 @@ export function Receipt({ invoice, payment, fingerprint = null }: { invoice: Inv
             </div>
             <p className="mt-2 text-[10.5px] leading-snug text-ink/50">{sim ? "Mock mode: no funds moved. Signature and tx hash are placeholders." : "Ed25519 signature checked with verifyQuoteSignature() from the 1-Click SDK before the deposit address was shown."}</p>
           </div>
-          <div className="flex justify-between pt-3 text-xs"><span className="pill text-mint">{payment.mock ? "◐ Simulated status" : "✓ Status from 1-Click"}</span><span className="pill font-mono">{short(payment.depositAddress)}</span></div>
+          <div className="flex justify-between pt-3 text-xs"><span className="pill text-mint-ink">{payment.mock ? "◐ Simulated status" : "✓ Status from 1-Click"}</span><span className="pill font-mono">{short(payment.depositAddress)}</span></div>
         </motion.div>
         <p className="mt-4 hidden text-center text-[10px] text-ink/50 print:block">Invoice Link receipt · settled via NEAR Intents (1-Click) · {invoice.number}</p>
         <div className="mt-4 grid grid-cols-2 gap-2.5 print:hidden">

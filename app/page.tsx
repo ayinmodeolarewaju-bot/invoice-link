@@ -89,7 +89,7 @@ export default function Builder() {
           </div>
           <L t="Payout to">
             <div className="relative"><input className={`field pr-32 font-mono ${payoutMissing ? "border-err ring-4 ring-err/10" : ""}`} aria-invalid={payoutMissing} aria-describedby="payout-src" value={f.payoutAccount} onChange={(e) => setF((s) => ({ ...s, ...onManualEdit(e.target.value, accountId) }))} />
-              <span id="payout-src" className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-mint">{payoutMissing ? "" : fromWallet ? <span data-testid="from-wallet" className="rounded-full bg-mint/15 px-2 py-0.5">From wallet</span> : acct?.exists && acct.id === f.payoutAccount.trim() ? "✓ Found on mainnet" : ""}</span></div>
+              <span id="payout-src" className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-mint-ink">{payoutMissing ? "" : fromWallet ? <span data-testid="from-wallet" className="rounded-full bg-mint/15 px-2 py-0.5">From wallet</span> : acct?.exists && acct.id === f.payoutAccount.trim() ? "✓ Found on mainnet" : ""}</span></div>
             {accountId && f.payoutChain === "near" && !fromWallet && <button type="button" onClick={() => setF((s) => ({ ...s, ...walletPayout(accountId) }))} className="mt-1.5 text-xs font-semibold text-violet">Use connected wallet ({accountId})</button>}
             {payoutMissing && <p role="alert" className="mt-1.5 text-xs font-semibold text-err">{acct?.error?.startsWith("Account") ? "Account not found on mainnet. Check the spelling, or create it first." : acct?.error}</p>}
           </L>

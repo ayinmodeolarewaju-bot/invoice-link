@@ -193,14 +193,14 @@ function Status({ p, invoice, onUpdate }: { p: Payment; invoice: Invoice; onUpda
   useEffect(() => { if (p.status === "SUCCESS") { const t = setTimeout(() => router.push(`/receipt/${invoice.id}`), 2200); return () => clearTimeout(t); } }, [p.status, router, invoice.id]);
   const done = p.status === "SUCCESS";
   const label = { PENDING_DEPOSIT: "Awaiting deposit", KNOWN_DEPOSIT_TX: "Deposit seen", PROCESSING: "Processing", SUCCESS: "Paid", INCOMPLETE_DEPOSIT: "Incomplete deposit", REFUNDED: "Refunded", FAILED: "Failed" }[p.status];
-  const tone = done ? "text-mint" : ["REFUNDED", "FAILED", "INCOMPLETE_DEPOSIT"].includes(p.status) ? "text-err" : "text-violet";
+  const tone = done ? "text-mint-ink" : ["REFUNDED", "FAILED", "INCOMPLETE_DEPOSIT"].includes(p.status) ? "text-err" : "text-violet";
   const amountLabel = `${money(total(invoice))} ${invoice.currency}`;
   return (
     <div>
       <PaidNotify show={done} amountLabel={amountLabel} />
       <div className="flex items-center justify-between gap-3"><h2 className="text-[22px] font-bold tracking-[-.02em]">{done ? "Payment complete" : "Payment in progress"}</h2>
-        <motion.span key={p.status} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`pill ${tone}`}><Pulse c={done ? "bg-mint" : "bg-violet"} />{label}</motion.span></div>
-      <p className="mb-6 mt-1.5 text-sm text-ink/55">{done ? "Opening your receipt…" : "You can close this page. The status updates on its own."}</p>
+        <motion.span key={p.status} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`pill ${tone}`}><span aria-hidden="true"><Pulse c={done ? "bg-mint" : "bg-violet"} /></span>{label}</motion.span></div>
+      <p role="status" aria-live="polite" aria-atomic="true" className="mb-6 mt-1.5 text-sm text-ink/55"><span className="sr-only">Payment status: {label}. </span>{done ? "Opening your receipt…" : "You can close this page. The status updates on its own."}</p>
       <StatusRail p={p} invoice={invoice} />
       <div className="mt-6 flex items-center justify-between rounded-xl bg-paper px-4 py-3.5 text-xs"><span className="lbl">Deposit address</span><span className="font-mono">{short(p.depositAddress)}</span></div>
       {done && <a href={`/receipt/${invoice.id}`} className="btn mt-4">View receipt</a>}
